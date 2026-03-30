@@ -4,3 +4,4 @@ numpy
 pyserial
 pynmea2
 requests
+python-dotenv

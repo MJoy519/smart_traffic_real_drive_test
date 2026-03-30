@@ -33,6 +33,9 @@ import serial
 import pynmea2
 import requests
 
+TEST_MODE = True
+TEST_LOCATION = (113.9640039313171,22.586732532117953)
+
 # 确保本目录在路径中，可 import config
 sys.path.insert(0, str(Path(__file__).parent))
 import config
@@ -576,19 +579,25 @@ class AzureApiWorker:
             next_call = now + config.GPS_QUERY_INTERVAL
 
             # ── 读取 GPS ──────────────────────────────────────────────────
-            gps = self.gps_worker.get_latest()
-            if gps is None:
-                print(f"[GPS] {beijing_now_str()}  尚无定位，等待卫星信号...")
-                continue
+            ts = beijing_now_str()
+            if TEST_MODE:
+                lon, lat = TEST_LOCATION
+                gps_record = {"timestamp": ts, "lat": lat, "lon": lon, "test_mode": True}
+                self._append_jsonl(self.gps_path, gps_record)
+                print(f"[GPS][TEST] {ts}  纬度 {lat:.6f}°  经度 {lon:.6f}°（固定测试坐标）")
+            else:
+                gps = self.gps_worker.get_latest()
+                if gps is None:
+                    print(f"[GPS] {ts}  尚无定位，等待卫星信号...")
+                    continue
 
-            ts  = beijing_now_str()
-            lat = gps["lat"]
-            lon = gps["lon"]
+                lat = gps["lat"]
+                lon = gps["lon"]
 
-            # 保存 GPS 读数
-            gps_record = {"timestamp": ts, **gps}
-            self._append_jsonl(self.gps_path, gps_record)
-            print(f"[GPS] {ts}  纬度 {lat:.6f}°  经度 {lon:.6f}°")
+                # 保存 GPS 读数
+                gps_record = {"timestamp": ts, **gps}
+                self._append_jsonl(self.gps_path, gps_record)
+                print(f"[GPS] {ts}  纬度 {lat:.6f}°  经度 {lon:.6f}°")
 
             # ── 并发调用三个 Azure API ────────────────────────────────────
             results = {}
@@ -687,19 +696,22 @@ def main():
 
     # ── 启动 GPS 读取 ─────────────────────────────────────────────────────────
     gps_worker = GpsWorker()
-    gps_worker.start()
-
-    print(f"\n[主程序] 等待 GPS 首次定位（最多 60 秒）...")
-    for _ in range(60):
-        if gps_worker.get_latest():
-            pos = gps_worker.get_latest()
-            print(f"[主程序] GPS 定位成功  纬度 {pos['lat']:.6f}°  经度 {pos['lon']:.6f}°")
-            break
-        if stop_event.is_set():
-            break
-        time.sleep(1.0)
+    if TEST_MODE:
+        print(f"\n[主程序][TEST] 使用固定坐标  经度 {TEST_LOCATION[0]:.6f}°  纬度 {TEST_LOCATION[1]:.6f}°")
     else:
-        print("[主程序] 警告: 60 秒内未获得 GPS 定位，将在有信号后自动开始 API 查询。")
+        gps_worker.start()
+
+        print(f"\n[主程序] 等待 GPS 首次定位（最多 60 秒）...")
+        for _ in range(60):
+            if gps_worker.get_latest():
+                pos = gps_worker.get_latest()
+                print(f"[主程序] GPS 定位成功  纬度 {pos['lat']:.6f}°  经度 {pos['lon']:.6f}°")
+                break
+            if stop_event.is_set():
+                break
+            time.sleep(1.0)
+        else:
+            print("[主程序] 警告: 60 秒内未获得 GPS 定位，将在有信号后自动开始 API 查询。")
 
     # ── 启动 Azure API 轮询 ───────────────────────────────────────────────────
     api_worker = AzureApiWorker(gps_worker, dirs["gps"], dirs["azure"], pid)

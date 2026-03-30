@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 # ─── 数据输出根目录
 DATA_ROOT = "data"
 
