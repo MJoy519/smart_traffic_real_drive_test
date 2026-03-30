@@ -611,12 +611,9 @@ class App(tk.Tk):
             self._task = "collect"
             pid = config.PARTICIPANT_ID
             self._update_buttons("collect")
-            # 状态栏切换为绿底高亮
-            self._status_bar.configure(bg=C_GREEN_BG)
-            self._lbl_pid.configure(bg=C_GREEN_BG)
             self._lbl_collecting.configure(
                 text=f"  \u25cf  正在采集第 {pid} 号受试者数据",
-                bg=C_GREEN_BG, fg=C_GREEN,
+                bg=C_CARD, fg=C_RED,
             )
             self._append_log(
                 f"\n{'=' * 60}\n"
@@ -642,9 +639,6 @@ class App(tk.Tk):
     def _on_task_done(self):
         prev = self._task
         self._task = None
-        # 恢复状态栏背景
-        self._status_bar.configure(bg=C_CARD)
-        self._lbl_pid.configure(bg=C_CARD)
         self._lbl_collecting.configure(text="", bg=C_CARD)
         self._update_buttons("idle")
         label = "采集" if prev == "collect" else "测试"
