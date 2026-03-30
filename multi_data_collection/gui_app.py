@@ -5,7 +5,8 @@ gui_app.py  —  Smart Traffic 实车采集 图形界面
   修改编号  —— 输入数字，修改当前受试者序号
   测试设备  —— 运行 test.py（GPS + 摄像头预览）
   开始采集  —— 运行 collect.py；状态栏实时显示当前受试者
-  ⚙        —— 右上角设置：数据路径、分段时长、GPS 串口/频率
+  ⚙        —— 右上角设置：数据路径、分段时长、GPS 串口/频率（与受试者编号
+             一并写入 settings.json，下次启动自动恢复）
 
 线程安全要点：
   * stdout/stderr  通过 Queue 转发，主线程 after(50ms) 轮询写入 Text
@@ -45,6 +46,7 @@ _DEFAULTS: dict = {
     "video_save_interval_minutes":  1,
     "gps_port":                     "COM7",
     "gps_query_interval":           10,
+    "participant_id":               "P1",
 }
 
 
@@ -72,13 +74,25 @@ import config  # load_dotenv() 在此处执行
 
 # 将 settings.json 中的值应用到 config 模块
 _settings = _load_settings()
-config.DATA_ROOT                   = _settings["data_root"]
-config.VIDEO_SAVE_INTERVAL_MINUTES = _settings["video_save_interval_minutes"]
-config.GPS_PORT                    = _settings["gps_port"]
-config.GPS_QUERY_INTERVAL          = _settings["gps_query_interval"]
+config.DATA_ROOT                     = _settings["data_root"]
+config.VIDEO_SAVE_INTERVAL_MINUTES   = int(_settings["video_save_interval_minutes"])
+config.GPS_PORT                      = str(_settings["gps_port"])
+config.GPS_QUERY_INTERVAL            = int(_settings["gps_query_interval"])
+config.PARTICIPANT_ID                = str(_settings.get("participant_id", "P1"))
 
 import collect
 import test as test_mod
+
+
+def _snapshot_settings_dict() -> dict:
+    """从当前 config 生成完整设置快照，用于写入 settings.json。"""
+    return {
+        "data_root":                    str(config.DATA_ROOT),
+        "video_save_interval_minutes":  int(config.VIDEO_SAVE_INTERVAL_MINUTES),
+        "gps_port":                     str(config.GPS_PORT),
+        "gps_query_interval":           int(config.GPS_QUERY_INTERVAL),
+        "participant_id":               str(config.PARTICIPANT_ID),
+    }
 
 # ── 浅色主题 ──────────────────────────────────────────────────────────────────
 C_BG       = "#f5f6fa"   # 主背景
@@ -391,6 +405,7 @@ class App(tk.Tk):
                 return
             config.PARTICIPANT_ID = f"P{val}"
             self._lbl_pid.configure(text=config.PARTICIPANT_ID)
+            _save_settings(_snapshot_settings_dict())
             dlg.destroy()
 
         entry.bind("<Return>", on_confirm)
@@ -543,15 +558,13 @@ class App(tk.Tk):
             config.GPS_PORT                    = port
             config.GPS_QUERY_INTERVAL          = int(gps_val)
 
-            # 持久化
-            _save_settings({
-                "data_root":                    data_path,
-                "video_save_interval_minutes":  int(video_val),
-                "gps_port":                     port,
-                "gps_query_interval":           int(gps_val),
-            })
+            _save_settings(_snapshot_settings_dict())
             dlg.destroy()
-            messagebox.showinfo("已保存", "设置已保存，下次采集时生效。", parent=self)
+            messagebox.showinfo(
+                "已保存",
+                "设置已写入与程序同目录的 settings.json，下次打开将自动加载。",
+                parent=self,
+            )
 
         tk.Button(
             btn_row, text="保存", command=on_save,
