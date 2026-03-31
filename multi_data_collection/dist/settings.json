@@ -1,6 +1,0 @@
-{
-  "data_root": "C:\\Users\\Lenovo\\Desktop\\Smart Traffic\\azure\\multi_data_collection\\dist\\data",
-  "video_save_interval_minutes": 1,
-  "gps_port": "COM7",
-  "gps_query_interval": 10
-}

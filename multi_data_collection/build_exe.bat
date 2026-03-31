@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal
 
 echo ============================================================
-echo   多模态数据采集系统  —  EXE 打包脚本
+echo   EXE 打包脚本
 echo ============================================================
 echo.
 
@@ -40,7 +40,7 @@ echo.
 python -m PyInstaller ^
   --onefile ^
   --windowed ^
-  --name "数据采集系统" ^
+  --name "Data Collection" ^
   --hidden-import cv2 ^
   --hidden-import serial ^
   --hidden-import serial.tools ^
@@ -50,6 +50,7 @@ python -m PyInstaller ^
   --hidden-import dotenv ^
   --hidden-import python_dotenv ^
   --collect-all cv2 ^
+  --exclude pyqt5 ^
   gui_app.py
 
 if errorlevel 1 (
@@ -64,10 +65,10 @@ echo ============================================================
 echo   打包成功！
 echo ============================================================
 echo.
-echo   EXE 文件位于：dist\数据采集系统.exe
+echo   EXE 文件位于：dist\Data Collection.exe
 echo.
 echo   部署步骤：
-echo     1. 将  dist\数据采集系统.exe  复制到目标桌面
+echo     1. 将  dist\Data Collection.exe  复制到目标桌面
 echo     2. 将  .env                   复制到同一目录
 echo     3. 双击 EXE 即可启动
 echo.

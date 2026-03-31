@@ -37,8 +37,7 @@ BEIJING_TZ = timezone(timedelta(hours=8))
 def beijing_now_str() -> str:
     return datetime.now(BEIJING_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
-TEST_CAMERAS = False
-GPS_TIMEOUT = 5
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  1. 摄像头测试
 # ══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +45,7 @@ GPS_TIMEOUT = 5
 # 每路预览的缩放尺寸（合并后窗口宽度 = PREVIEW_W × 2）
 PREVIEW_W = 640
 PREVIEW_H = 360
-DIVIDER_W = 4    # 中间分割线宽度（像素）
+DIVIDER_W = 8    # 中间分割线宽度（像素）
 
 
 def _draw_overlay(frame: np.ndarray, label: str, ts: str) -> np.ndarray:
@@ -83,7 +82,7 @@ def test_cameras():
     左侧：面部摄像头（Facial）  右侧：交通摄像头（Traffic）
     按 'q' 关闭预览并继续执行 GPS 测试。
     """
-    step_label = "1/1" if TEST_CAMERAS else "2/2"
+    step_label = "1/1" if config.TEST_CAMERAS else "2/2"
     print("\n" + "=" * 64)
     print(f"  [{step_label}] 摄像头测试 & 分屏预览")
     print("=" * 64)
@@ -204,7 +203,9 @@ def test_cameras():
 #  2. GPS 测试
 # ══════════════════════════════════════════════════════════════════════════════
 
-def test_gps(n_readings: int = 5, timeout_sec: int = GPS_TIMEOUT):
+def test_gps(n_readings: int = 5, timeout_sec=None):
+    if timeout_sec is None:
+        timeout_sec = config.GPS_TEST_ACQUIRE_TIMEOUT_SEC
     """
     连接 GPS 串口，读取 n_readings 次有效定位并打印。
     超过 timeout_sec 秒未获得足够定位则超时退出。
@@ -316,24 +317,24 @@ def main():
     print("=" * 64)
     print("  多模态采集系统 — 采集前设备检测")
     print(f"  {beijing_now_str()}")
-    if TEST_CAMERAS:
-        print("  模式: 仅摄像头测试（TEST_CAMERAS = True）")
+    if config.TEST_CAMERAS:
+        print("  模式: 仅摄像头测试（config.TEST_CAMERAS = True）")
     else:
-        print("  模式: GPS + 摄像头完整测试（TEST_CAMERAS = False）")
+        print("  模式: GPS + 摄像头完整测试（config.TEST_CAMERAS = False）")
     print("=" * 64)
     print(f"\n  受试者: {config.PARTICIPANT_ID}")
     print(f"  面部摄像头索引: {config.FACIAL_CAMERA_INDEX}")
     print(f"  交通摄像头索引: {config.TRAFFIC_CAMERA_INDEX}")
     print(f"  录制分辨率: {config.FRAME_WIDTH}×{config.FRAME_HEIGHT} @ {config.FPS}fps")
-    if not TEST_CAMERAS:
+    if not config.TEST_CAMERAS:
         print(f"  GPS 串口: {config.GPS_PORT}  ({config.GPS_BAUDRATE} baud)")
     print(f"  视频分段: 每 {config.VIDEO_SAVE_INTERVAL_MINUTES} 分钟")
     print(f"  API 查询间隔: {config.GPS_QUERY_INTERVAL} 秒")
     print(f"  事件查询半径: {config.INCIDENT_RADIUS_KM} km")
 
     # 1. GPS 测试（TEST_CAMERAS = True 时跳过）
-    if not TEST_CAMERAS:
-        test_gps(n_readings=5, timeout_sec=GPS_TIMEOUT)
+    if not config.TEST_CAMERAS:
+        test_gps(n_readings=5)
 
         # GPS 测试结束后询问是否继续摄像头测试
         print()
@@ -353,8 +354,8 @@ def main():
     print()
     print("=" * 64)
     print("  设备检测完成！")
-    if TEST_CAMERAS:
-        print("  摄像头测试通过后，可将 TEST_CAMERAS 设为 False 再次运行以测试 GPS，")
+    if config.TEST_CAMERAS:
+        print("  摄像头测试通过后，可在系统设置中关闭「仅测摄像头」以再测 GPS，")
         print("  或直接运行 collect.py 开始正式采集。")
     else:
         print("  运行 collect.py 开始正式采集。")

@@ -5,8 +5,8 @@ gui_app.py  —  Smart Traffic 实车采集 图形界面
   修改编号  —— 输入数字，修改当前受试者序号
   测试设备  —— 运行 test.py（GPS + 摄像头预览）
   开始采集  —— 运行 collect.py；状态栏实时显示当前受试者
-  ⚙        —— 右上角设置：数据路径、分段时长、GPS 串口/频率（与受试者编号
-             一并写入 settings.json，下次启动自动恢复）
+  ⚙        —— 右上角设置：路径、分段、分辨率、摄像头索引、GPS、采集间隔、
+             交通事件半径、Azure 密钥等（写入 settings.json）
 
 线程安全要点：
   * stdout/stderr  通过 Queue 转发，主线程 after(50ms) 轮询写入 Text
@@ -47,6 +47,16 @@ _DEFAULTS: dict = {
     "gps_port":                     "COM7",
     "gps_query_interval":           10,
     "participant_id":               "P1",
+    "facial_camera_index":          0,
+    "traffic_camera_index":         1,
+    "frame_width":                  1280,
+    "frame_height":                 720,
+    "incident_radius_km":           1.0,
+    "test_cameras_only":            False,
+    "gps_test_acquire_timeout_sec": 5,
+    "gps_use_fixed_location":       True,
+    "test_location_lon":            113.9640039313171,
+    "test_location_lat":            22.586732532117953,
 }
 
 
@@ -79,6 +89,25 @@ config.VIDEO_SAVE_INTERVAL_MINUTES   = int(_settings["video_save_interval_minute
 config.GPS_PORT                      = str(_settings["gps_port"])
 config.GPS_QUERY_INTERVAL            = int(_settings["gps_query_interval"])
 config.PARTICIPANT_ID                = str(_settings.get("participant_id", "P1"))
+config.FACIAL_CAMERA_INDEX           = int(_settings["facial_camera_index"])
+config.TRAFFIC_CAMERA_INDEX          = int(_settings["traffic_camera_index"])
+config.FRAME_WIDTH                   = int(_settings["frame_width"])
+config.FRAME_HEIGHT                  = int(_settings["frame_height"])
+config.INCIDENT_RADIUS_KM            = float(_settings["incident_radius_km"])
+config.TEST_CAMERAS                  = bool(_settings.get("test_cameras_only", False))
+config.GPS_TEST_ACQUIRE_TIMEOUT_SEC  = int(_settings.get("gps_test_acquire_timeout_sec", 5))
+config.TEST_MODE                     = bool(_settings.get("gps_use_fixed_location", True))
+config.TEST_LOCATION_LON             = float(_settings.get("test_location_lon", 113.9640039313171))
+config.TEST_LOCATION_LAT             = float(_settings.get("test_location_lat", 22.586732532117953))
+
+# Azure 密钥：仅当 settings.json 里已有该键时覆盖（含空字符串）；否则沿用 .env
+if "azure_maps_key" in _settings:
+    _ak = _settings.get("azure_maps_key")
+    if _ak is None:
+        config.AZURE_MAPS_KEY = None
+    else:
+        _t = str(_ak).strip()
+        config.AZURE_MAPS_KEY = _t if _t else None
 
 import collect
 import test as test_mod
@@ -92,6 +121,17 @@ def _snapshot_settings_dict() -> dict:
         "gps_port":                     str(config.GPS_PORT),
         "gps_query_interval":           int(config.GPS_QUERY_INTERVAL),
         "participant_id":               str(config.PARTICIPANT_ID),
+        "azure_maps_key":               str(config.AZURE_MAPS_KEY or ""),
+        "facial_camera_index":          int(config.FACIAL_CAMERA_INDEX),
+        "traffic_camera_index":         int(config.TRAFFIC_CAMERA_INDEX),
+        "frame_width":                  int(config.FRAME_WIDTH),
+        "frame_height":                 int(config.FRAME_HEIGHT),
+        "incident_radius_km":           float(config.INCIDENT_RADIUS_KM),
+        "test_cameras_only":            bool(config.TEST_CAMERAS),
+        "gps_test_acquire_timeout_sec": int(config.GPS_TEST_ACQUIRE_TIMEOUT_SEC),
+        "gps_use_fixed_location":       bool(config.TEST_MODE),
+        "test_location_lon":            float(config.TEST_LOCATION_LON),
+        "test_location_lat":            float(config.TEST_LOCATION_LAT),
     }
 
 # ── 浅色主题 ──────────────────────────────────────────────────────────────────
@@ -431,14 +471,15 @@ class App(tk.Tk):
         dlg.resizable(False, False)
         dlg.grab_set()
         dlg.transient(self)
-        self._center_child(dlg, 500, 320)
+        # 横向窗口：宽度大于高度
+        self._center_child(dlg, 780, 680)
 
         # 标题
         tk.Label(dlg, text="系统设置", font=FONT_BIG,
-                 bg=C_CARD, fg=C_TEXT).pack(pady=(18, 12))
+                 bg=C_CARD, fg=C_TEXT).pack(pady=(14, 8))
 
         frm = tk.Frame(dlg, bg=C_CARD)
-        frm.pack(fill="x", padx=30)
+        frm.pack(fill="both", expand=True, padx=24, pady=(0, 4))
 
         lbl_kw  = dict(bg=C_CARD, fg=C_TEXT,  font=FONT_UI, anchor="w")
         entry_kw = dict(
@@ -450,18 +491,29 @@ class App(tk.Tk):
             highlightcolor=C_ACCENT,
         )
 
-        # ── 行辅助 ───────────────────────────────────────────────────────────
         def add_row(parent, row, label, widget_factory):
-            tk.Label(parent, text=label, width=20, **lbl_kw).grid(
-                row=row, column=0, sticky="w", pady=6)
+            tk.Label(parent, text=label, width=18, **lbl_kw).grid(
+                row=row, column=0, sticky="nw", pady=5)
             widget_factory(parent, row)
 
-        # 1. 数据存储路径
+        def spin_kw():
+            return dict(
+                relief="flat", bd=0,
+                bg=C_SURFACE, fg=C_TEXT,
+                font=FONT_UI,
+                buttonbackground=C_SURFACE,
+                highlightthickness=1,
+                highlightbackground=C_BORDER,
+                highlightcolor=C_ACCENT,
+                width=8,
+            )
+
+        # 0. 数据存储路径
         data_var = tk.StringVar(value=config.DATA_ROOT)
 
         def make_data_row(p, r):
-            path_entry = tk.Entry(p, textvariable=data_var, width=28, **entry_kw)
-            path_entry.grid(row=r, column=1, sticky="ew", padx=(0, 6))
+            tk.Entry(p, textvariable=data_var, width=42, **entry_kw).grid(
+                row=r, column=1, sticky="ew", padx=(0, 6))
             tk.Button(
                 p, text="浏览", font=("Microsoft YaHei UI", 9),
                 bg=C_SURFACE, fg=C_MUTED, relief="flat", cursor="hand2",
@@ -478,71 +530,224 @@ class App(tk.Tk):
 
         add_row(frm, 0, "数据存储路径：", make_data_row)
 
-        # 2. 视频分段时长
+        # 1. 视频分段时长
         video_var = tk.StringVar(value=str(config.VIDEO_SAVE_INTERVAL_MINUTES))
 
         def make_video_row(p, r):
-            sb = tk.Spinbox(
-                p, from_=1, to=60, width=8,
-                textvariable=video_var,
-                relief="flat", bd=0,
-                bg=C_SURFACE, fg=C_TEXT,
-                font=FONT_UI,
-                buttonbackground=C_SURFACE,
-                highlightthickness=1,
-                highlightbackground=C_BORDER,
-                highlightcolor=C_ACCENT,
-            )
-            sb.grid(row=r, column=1, sticky="w")
+            tk.Spinbox(
+                p, from_=1, to=120, textvariable=video_var, **spin_kw(),
+            ).grid(row=r, column=1, sticky="w")
             tk.Label(p, text="分钟/段", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
 
         add_row(frm, 1, "视频分段时长：", make_video_row)
 
-        # 3. GPS 串口号
+        # 2. 视频分辨率（360p / 720p / 1080p）
+        _RES_OPTIONS = (
+            ("360p（640×360）", 640, 360),
+            ("720p（1280×720）", 1280, 720),
+            ("1080p（1920×1080）", 1920, 1080),
+        )
+
+        def _res_label_from_config() -> str:
+            w, h = config.FRAME_WIDTH, config.FRAME_HEIGHT
+            for lbl, ww, hh in _RES_OPTIONS:
+                if (ww, hh) == (w, h):
+                    return lbl
+            return "720p（1280×720）"
+
+        res_var = tk.StringVar(value=_res_label_from_config())
+
+        def make_res_row(p, r):
+            sub = tk.Frame(p, bg=C_CARD)
+            sub.grid(row=r, column=1, columnspan=2, sticky="w")
+            cb = ttk.Combobox(
+                sub,
+                textvariable=res_var,
+                values=[x[0] for x in _RES_OPTIONS],
+                state="readonly",
+                width=22,
+                font=FONT_UI,
+            )
+            cb.pack(side="left")
+
+        add_row(frm, 2, "视频分辨率：", make_res_row)
+
+        # 3 / 4. 摄像头索引
+        facial_var = tk.StringVar(value=str(config.FACIAL_CAMERA_INDEX))
+        traffic_var = tk.StringVar(value=str(config.TRAFFIC_CAMERA_INDEX))
+
+        def make_facial_row(p, r):
+            tk.Spinbox(
+                p, from_=0, to=15, textvariable=facial_var, **spin_kw(),
+            ).grid(row=r, column=1, sticky="w")
+            tk.Label(p, text="默认为0", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        def make_traffic_row(p, r):
+            tk.Spinbox(
+                p, from_=0, to=15, textvariable=traffic_var, **spin_kw(),
+            ).grid(row=r, column=1, sticky="w")
+            tk.Label(p, text="默认为1", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        add_row(frm, 3, "面部摄像头索引：", make_facial_row)
+        add_row(frm, 4, "交通摄像头索引：", make_traffic_row)
+
+        # 5. GPS 串口号
         port_var = tk.StringVar(value=config.GPS_PORT)
 
         def make_port_row(p, r):
-            tk.Entry(p, textvariable=port_var, width=10, **entry_kw).grid(
+            tk.Entry(p, textvariable=port_var, width=12, **entry_kw).grid(
                 row=r, column=1, sticky="w")
 
-        add_row(frm, 2, "GPS 串口号：", make_port_row)
+        add_row(frm, 5, "GPS 串口号：", make_port_row)
 
-        # 4. GPS 采集间隔
+        # 6. 数据采集间隔
         gps_var = tk.StringVar(value=str(config.GPS_QUERY_INTERVAL))
 
         def make_gps_row(p, r):
-            sb = tk.Spinbox(
-                p, from_=5, to=300, width=8,
-                textvariable=gps_var,
-                relief="flat", bd=0,
-                bg=C_SURFACE, fg=C_TEXT,
-                font=FONT_UI,
-                buttonbackground=C_SURFACE,
-                highlightthickness=1,
-                highlightbackground=C_BORDER,
-                highlightcolor=C_ACCENT,
-            )
-            sb.grid(row=r, column=1, sticky="w")
+            tk.Spinbox(
+                p, from_=5, to=600, textvariable=gps_var, **spin_kw(),
+            ).grid(row=r, column=1, sticky="w")
             tk.Label(p, text="秒/次", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
 
-        add_row(frm, 3, "GPS 采集间隔：", make_gps_row)
+        add_row(frm, 6, "数据采集间隔：", make_gps_row)
+
+        # 7. 采集定位模式（collect：固定点 vs 串口 GPS）
+        _LOC_LABELS = ("GPS 硬件实时定位", "固定经纬度（调试用）")
+        loc_mode_var = tk.StringVar(
+            value=_LOC_LABELS[1] if config.TEST_MODE else _LOC_LABELS[0]
+        )
+        lon_var = tk.StringVar(value=str(config.TEST_LOCATION_LON))
+        lat_var = tk.StringVar(value=str(config.TEST_LOCATION_LAT))
+
+        def make_loc_mode_row(p, r):
+            sub = tk.Frame(p, bg=C_CARD)
+            sub.grid(row=r, column=1, columnspan=2, sticky="w")
+            cb = ttk.Combobox(
+                sub,
+                textvariable=loc_mode_var,
+                values=list(_LOC_LABELS),
+                state="readonly",
+                width=24,
+                font=FONT_UI,
+            )
+            cb.pack(side="left")
+
+        add_row(frm, 7, "采集定位模式：", make_loc_mode_row)
+
+        _lonlat_entries = []
+
+        def make_lon_row(p, r):
+            e = tk.Entry(p, textvariable=lon_var, width=20, **entry_kw)
+            e.grid(row=r, column=1, sticky="w")
+            _lonlat_entries.append(e)
+            tk.Label(p, text="度（东经为正）", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        def make_lat_row(p, r):
+            e = tk.Entry(p, textvariable=lat_var, width=20, **entry_kw)
+            e.grid(row=r, column=1, sticky="w")
+            _lonlat_entries.append(e)
+            tk.Label(p, text="度（北纬为正）", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        add_row(frm, 8, "固定点经度：", make_lon_row)
+        add_row(frm, 9, "固定点纬度：", make_lat_row)
+
+        def _sync_lonlat_entries(*_):
+            fixed = loc_mode_var.get() == _LOC_LABELS[1]
+            st = "normal" if fixed else "disabled"
+            for w in _lonlat_entries:
+                w.configure(state=st)
+
+        loc_mode_var.trace_add("write", _sync_lonlat_entries)
+        dlg.after(50, _sync_lonlat_entries)
+
+        # 设备测试（test.py）
+        test_only_var = tk.BooleanVar(value=bool(config.TEST_CAMERAS))
+        gps_test_to_var = tk.StringVar(value=str(config.GPS_TEST_ACQUIRE_TIMEOUT_SEC))
+
+        def make_test_only_row(p, r):
+            tk.Checkbutton(
+                p,
+                text="仅测摄像头（跳过 GPS 串口测试）",
+                variable=test_only_var,
+                bg=C_CARD, fg=C_TEXT,
+                activebackground=C_CARD,
+                selectcolor=C_SURFACE,
+                font=FONT_UI,
+                anchor="w",
+            ).grid(row=r, column=1, columnspan=2, sticky="w")
+
+        def make_gps_test_to_row(p, r):
+            tk.Spinbox(
+                p, from_=3, to=600, textvariable=gps_test_to_var, **spin_kw(),
+            ).grid(row=r, column=1, sticky="w")
+            tk.Label(p, text="秒", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        add_row(frm, 10, "设备测试：", make_test_only_row)
+        add_row(frm, 11, "GPS 测试定位超时：", make_gps_test_to_row)
+
+        # 12. 交通事件查询半径
+        radius_var = tk.StringVar(value=str(config.INCIDENT_RADIUS_KM))
+
+        def make_radius_row(p, r):
+            tk.Entry(p, textvariable=radius_var, width=10, **entry_kw).grid(
+                row=r, column=1, sticky="w")
+            tk.Label(p, text="km", **lbl_kw).grid(row=r, column=2, sticky="w", padx=4)
+
+        add_row(frm, 12, "交通事件查询半径：", make_radius_row)
+
+        # 13. Azure API 密钥
+        api_var = tk.StringVar(value=str(config.AZURE_MAPS_KEY or ""))
+
+        def make_api_row(p, r):
+            tk.Entry(
+                p, textvariable=api_var, width=42,
+                show="*", **entry_kw,
+            ).grid(row=r, column=1, columnspan=2, sticky="ew", padx=(0, 0))
+
+        add_row(frm, 13, "Azure API 密钥：", make_api_row)
 
         frm.columnconfigure(1, weight=1)
 
         # ── 保存 / 取消 ───────────────────────────────────────────────────────
         btn_row = tk.Frame(dlg, bg=C_CARD)
-        btn_row.pack(pady=(16, 18))
+        btn_row.pack(pady=(12, 16))
 
         def on_save():
-            # 校验
             video_val = video_var.get().strip()
             gps_val   = gps_var.get().strip()
             if not video_val.isdigit() or int(video_val) < 1:
                 messagebox.showwarning("格式错误", "视频分段时长须为正整数（分钟）。", parent=dlg)
                 return
             if not gps_val.isdigit() or int(gps_val) < 1:
-                messagebox.showwarning("格式错误", "GPS 采集间隔须为正整数（秒）。", parent=dlg)
+                messagebox.showwarning("格式错误", "数据采集间隔须为正整数（秒）。", parent=dlg)
                 return
+            sel = res_var.get().strip()
+            fw = fh = None
+            for lbl, ww, hh in _RES_OPTIONS:
+                if lbl == sel:
+                    fw, fh = ww, hh
+                    break
+            if fw is None:
+                messagebox.showwarning("格式错误", "请选择视频分辨率（360p / 720p / 1080p）。", parent=dlg)
+                return
+            try:
+                fi = int(facial_var.get().strip())
+                ti = int(traffic_var.get().strip())
+            except ValueError:
+                messagebox.showwarning("格式错误", "摄像头索引须为整数。", parent=dlg)
+                return
+            if not (0 <= fi <= 15 and 0 <= ti <= 15):
+                messagebox.showwarning("格式错误", "摄像头索引范围 0–15。", parent=dlg)
+                return
+            try:
+                ir = float(str(radius_var.get().strip()).replace(",", "."))
+            except ValueError:
+                messagebox.showwarning("格式错误", "交通事件查询半径须为数字（km）。", parent=dlg)
+                return
+            if not (0.1 <= ir <= 200.0):
+                messagebox.showwarning("格式错误", "查询半径建议 0.1–200 km。", parent=dlg)
+                return
+
             port = port_var.get().strip()
             if not port:
                 messagebox.showwarning("格式错误", "GPS 串口号不能为空。", parent=dlg)
@@ -552,11 +757,40 @@ class App(tk.Tk):
                 messagebox.showwarning("格式错误", "数据存储路径不能为空。", parent=dlg)
                 return
 
-            # 应用到 config
+            api_raw = api_var.get().strip()
+            config.AZURE_MAPS_KEY = api_raw if api_raw else None
+
+            use_fixed = loc_mode_var.get() == _LOC_LABELS[1]
+            config.TEST_MODE = use_fixed
+            try:
+                tlon = float(str(lon_var.get().strip()).replace(",", "."))
+                tlat = float(str(lat_var.get().strip()).replace(",", "."))
+            except ValueError:
+                messagebox.showwarning("格式错误", "固定点经度、纬度须为数字。", parent=dlg)
+                return
+            if use_fixed:
+                if not (-180.0 <= tlon <= 180.0 and -90.0 <= tlat <= 90.0):
+                    messagebox.showwarning("格式错误", "经度 ∈ [-180,180]，纬度 ∈ [-90,90]。", parent=dlg)
+                    return
+            config.TEST_LOCATION_LON = tlon
+            config.TEST_LOCATION_LAT = tlat
+
+            config.TEST_CAMERAS = bool(test_only_var.get())
+            gto = gps_test_to_var.get().strip()
+            if not gto.isdigit() or int(gto) < 3:
+                messagebox.showwarning("格式错误", "GPS 测试定位超时须为不小于 3 的整数（秒）。", parent=dlg)
+                return
+            config.GPS_TEST_ACQUIRE_TIMEOUT_SEC = int(gto)
+
             config.DATA_ROOT                   = data_path
             config.VIDEO_SAVE_INTERVAL_MINUTES = int(video_val)
             config.GPS_PORT                    = port
             config.GPS_QUERY_INTERVAL          = int(gps_val)
+            config.FACIAL_CAMERA_INDEX         = fi
+            config.TRAFFIC_CAMERA_INDEX        = ti
+            config.FRAME_WIDTH                 = fw
+            config.FRAME_HEIGHT                = fh
+            config.INCIDENT_RADIUS_KM          = ir
 
             _save_settings(_snapshot_settings_dict())
             dlg.destroy()

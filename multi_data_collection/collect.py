@@ -33,9 +33,6 @@ import serial
 import pynmea2
 import requests
 
-TEST_MODE = True
-TEST_LOCATION = (113.9640039313171,22.586732532117953)
-
 # 确保本目录在路径中，可 import config
 sys.path.insert(0, str(Path(__file__).parent))
 import config
@@ -580,8 +577,8 @@ class AzureApiWorker:
 
             # ── 读取 GPS ──────────────────────────────────────────────────
             ts = beijing_now_str()
-            if TEST_MODE:
-                lon, lat = TEST_LOCATION
+            if config.TEST_MODE:
+                lon, lat = config.TEST_LOCATION_LON, config.TEST_LOCATION_LAT
                 gps_record = {"timestamp": ts, "lat": lat, "lon": lon, "test_mode": True}
                 self._append_jsonl(self.gps_path, gps_record)
                 print(f"[GPS][TEST] {ts}  纬度 {lat:.6f}°  经度 {lon:.6f}°（固定测试坐标）")
@@ -696,8 +693,9 @@ def main():
 
     # ── 启动 GPS 读取 ─────────────────────────────────────────────────────────
     gps_worker = GpsWorker()
-    if TEST_MODE:
-        print(f"\n[主程序][TEST] 使用固定坐标  经度 {TEST_LOCATION[0]:.6f}°  纬度 {TEST_LOCATION[1]:.6f}°")
+    if config.TEST_MODE:
+        print(f"\n[主程序][TEST] 使用固定坐标  经度 {config.TEST_LOCATION_LON:.6f}°  "
+              f"纬度 {config.TEST_LOCATION_LAT:.6f}°")
     else:
         gps_worker.start()
 
