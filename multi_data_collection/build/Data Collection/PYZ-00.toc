@@ -1,5 +1,6 @@
 ('C:\\Users\\Lenovo\\Desktop\\Smart '
- 'Traffic\\azure\\multi_data_collection\\build\\Data Collection\\PYZ-00.pyz',
+ 'Traffic\\multi_data_collection\\multi_data_collection\\build\\Data '
+ 'Collection\\PYZ-00.pyz',
  [('__future__', 'C:\\Python314\\Lib\\__future__.py', 'PYMODULE'),
   ('_aix_support', 'C:\\Python314\\Lib\\_aix_support.py', 'PYMODULE'),
   ('_ast_unparse', 'C:\\Python314\\Lib\\_ast_unparse.py', 'PYMODULE'),
@@ -175,7 +176,7 @@
   ('codeop', 'C:\\Python314\\Lib\\codeop.py', 'PYMODULE'),
   ('collect',
    'C:\\Users\\Lenovo\\Desktop\\Smart '
-   'Traffic\\azure\\multi_data_collection\\collect.py',
+   'Traffic\\multi_data_collection\\multi_data_collection\\collect.py',
    'PYMODULE'),
   ('compression', 'C:\\Python314\\Lib\\compression\\__init__.py', 'PYMODULE'),
   ('compression._common',
@@ -217,7 +218,7 @@
    'PYMODULE'),
   ('config',
    'C:\\Users\\Lenovo\\Desktop\\Smart '
-   'Traffic\\azure\\multi_data_collection\\config.py',
+   'Traffic\\multi_data_collection\\multi_data_collection\\config.py',
    'PYMODULE'),
   ('configparser', 'C:\\Python314\\Lib\\configparser.py', 'PYMODULE'),
   ('contextlib', 'C:\\Python314\\Lib\\contextlib.py', 'PYMODULE'),
@@ -1536,7 +1537,7 @@
   ('tempfile', 'C:\\Python314\\Lib\\tempfile.py', 'PYMODULE'),
   ('test',
    'C:\\Users\\Lenovo\\Desktop\\Smart '
-   'Traffic\\azure\\multi_data_collection\\test.py',
+   'Traffic\\multi_data_collection\\multi_data_collection\\test.py',
    'PYMODULE'),
   ('textwrap', 'C:\\Python314\\Lib\\textwrap.py', 'PYMODULE'),
   ('threading', 'C:\\Python314\\Lib\\threading.py', 'PYMODULE'),

@@ -56,6 +56,26 @@ def beijing_now_str() -> str:
 # ─── 全局停止事件 ────────────────────────────────────────────────────────────
 stop_event = threading.Event()
 
+# ─── 摄像头就绪事件（所有摄像头打开后由 main() 设置，供 GUI 启动计时器）──────
+cameras_ready_event = threading.Event()
+
+# ─── 途径点触发计数器（GUI 调用 trigger_waypoint() 递增，摄像头写入线程检测）──
+_waypoint_count = 0
+_waypoint_lock  = threading.Lock()
+
+
+def trigger_waypoint() -> int:
+    """
+    GUI 按下"途径点记录"按钮时调用。
+    递增计数器，各 CameraWorker 检测到后立即保存当前视频段并开启新段。
+    返回当前途径点编号。
+    """
+    global _waypoint_count
+    with _waypoint_lock:
+        _waypoint_count += 1
+        return _waypoint_count
+
+
 # ─── 摄像头串行开锁（Windows MSMF/DSHOW 不支持并发初始化）────────────────────
 # 两个采集线程共用此锁，保证摄像头一个一个打开，避免设备占用冲突
 _cam_open_lock = threading.Lock()
@@ -65,11 +85,12 @@ _cam_open_lock = threading.Lock()
 def setup_dirs(pid: str) -> dict:
     """为受试者创建各类数据目录，返回路径字典。"""
     root = Path(__file__).parent / config.DATA_ROOT
+    subj = root / "subjects" / pid          # 受试者主文件夹（与 GUI 侧保持一致）
     dirs = {
-        "facial":  root / "facial_video" / pid,
-        "traffic": root / "traffic_video" / pid,
-        "gps":     root / "gps"           / pid,
-        "azure":   root / "azure"          / pid,
+        "facial":  subj / "facial_video",   # 面部视频 → subjects/P{x}/facial_video/
+        "traffic": subj / "traffic_video",  # 交通视频 → subjects/P{x}/traffic_video/
+        "gps":     root / "gps"   / pid,
+        "azure":   root / "azure" / pid,
     }
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
@@ -102,6 +123,8 @@ class CameraWorker:
         self.opened = False             # 打开成功则 True
         # 所有分段元数据汇总到同一个 JSONL 文件（断点续录时追加）
         self.seg_log_path = save_dir / f"{pid}_segments.jsonl"
+        # 已处理的途径点数（与模块级 _waypoint_count 对比，检测新途径点）
+        self._waypoint_processed = 0
 
     # ── 断点续录：扫描已有视频，返回下一个可用编号 ────────────────────────────
 
@@ -270,7 +293,14 @@ class CameraWorker:
             seg_start = time.time()
             print(f"[{self.label}] 开始录制段 {seg_num}: {filename}  ({meta['start_time']})")
 
-        open_new_segment()  # 启动首段
+        # 等待两路摄像头全部就绪后再同步开始录制（避免两路时间戳不对齐）
+        # cameras_ready_event 由 main() 在两路均打开后统一设置
+        cameras_ready_event.wait(timeout=20.0)
+        if not self.opened or stop_event.is_set():
+            print(f"[{self.label}] 写入线程退出（摄像头未成功打开）")
+            return
+
+        open_new_segment()  # 启动首段（两路同步，时间戳准确）
 
         while not stop_event.is_set() or not self.frame_queue.empty():
             try:
@@ -284,6 +314,15 @@ class CameraWorker:
 
             writer.write(frame)
             meta["frame_count"] = meta.get("frame_count", 0) + 1
+
+            # 检查途径点触发（GUI 按下"途径点记录"时立即分段）
+            current_wp = _waypoint_count
+            if current_wp > self._waypoint_processed:
+                self._waypoint_processed = current_wp
+                print(f"[{self.label}] 途径点 {current_wp} 触发，立即保存当前分段...")
+                seg_num += 1
+                open_new_segment()
+                continue  # 跳过本次时间分段检查
 
             # 检查是否到达分段时间
             if time.time() - seg_start >= interval_secs:
@@ -649,6 +688,7 @@ class AzureApiWorker:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    cameras_ready_event.clear()   # 重置，防止上次采集残留已设置状态
     pid = config.PARTICIPANT_ID
 
     print("=" * 64)
@@ -690,36 +730,43 @@ def main():
         return
 
     print(f"[主程序] 已就绪的摄像头: {', '.join(cam_ok)}")
+    cameras_ready_event.set()   # 通知 GUI 摄像头已就绪，可以启动计时器
 
-    # ── 启动 GPS 读取 ─────────────────────────────────────────────────────────
+    # ── GPS 与 Azure API（仅在非仅摄像头模式下启动）────────────────────────────
     gps_worker = GpsWorker()
-    if config.TEST_MODE:
-        print(f"\n[主程序][TEST] 使用固定坐标  经度 {config.TEST_LOCATION_LON:.6f}°  "
-              f"纬度 {config.TEST_LOCATION_LAT:.6f}°")
+    api_worker = None
+
+    if getattr(config, "CAMERA_ONLY_MODE", True):
+        print("\n[主程序] 仅摄像头采集模式：跳过 GPS 串口读取和 Azure API 查询。")
     else:
-        gps_worker.start()
-
-        print(f"\n[主程序] 等待 GPS 首次定位（最多 60 秒）...")
-        for _ in range(60):
-            if gps_worker.get_latest():
-                pos = gps_worker.get_latest()
-                print(f"[主程序] GPS 定位成功  纬度 {pos['lat']:.6f}°  经度 {pos['lon']:.6f}°")
-                break
-            if stop_event.is_set():
-                break
-            time.sleep(1.0)
+        if config.TEST_MODE:
+            print(f"\n[主程序][TEST] 使用固定坐标  经度 {config.TEST_LOCATION_LON:.6f}°  "
+                  f"纬度 {config.TEST_LOCATION_LAT:.6f}°")
         else:
-            print("[主程序] 警告: 60 秒内未获得 GPS 定位，将在有信号后自动开始 API 查询。")
+            gps_worker.start()
 
-    # ── 启动 Azure API 轮询 ───────────────────────────────────────────────────
-    api_worker = AzureApiWorker(gps_worker, dirs["gps"], dirs["azure"], pid)
-    api_worker.start()
+            print(f"\n[主程序] 等待 GPS 首次定位（最多 60 秒）...")
+            for _ in range(60):
+                if gps_worker.get_latest():
+                    pos = gps_worker.get_latest()
+                    print(f"[主程序] GPS 定位成功  纬度 {pos['lat']:.6f}°  经度 {pos['lon']:.6f}°")
+                    break
+                if stop_event.is_set():
+                    break
+                time.sleep(1.0)
+            else:
+                print("[主程序] 警告: 60 秒内未获得 GPS 定位，将在有信号后自动开始 API 查询。")
+
+        # 启动 Azure API 轮询
+        api_worker = AzureApiWorker(gps_worker, dirs["gps"], dirs["azure"], pid)
+        api_worker.start()
 
     print(f"\n[主程序] 所有模块已启动，按 Ctrl+C 停止采集。\n")
     print(f"  面部视频  → {dirs['facial']}")
     print(f"  交通视频  → {dirs['traffic']}")
-    print(f"  GPS 数据  → {dirs['gps']}")
-    print(f"  Azure数据 → {dirs['azure']}")
+    if not getattr(config, "CAMERA_ONLY_MODE", True):
+        print(f"  GPS 数据  → {dirs['gps']}")
+        print(f"  Azure数据 → {dirs['azure']}")
     print()
 
     # ── 主线程等待中断 ────────────────────────────────────────────────────────
@@ -731,11 +778,12 @@ def main():
 
     stop_event.set()
 
-    # ── 等待各线程退出 ────────────────────────────────────────────────────────
-    print("[主程序] 等待视频写入完成（最多 60 秒）...")
-    facial_cam.join(timeout=60.0)
-    traffic_cam.join(timeout=60.0)
-    api_worker.join(timeout=30.0)
+    # ── 等待各线程退出（不设超时，等待视频完整写入）─────────────────────────────
+    print("[主程序] 等待视频写入完成...")
+    facial_cam.join()    # 无超时，等待最后一段视频全部写入磁盘
+    traffic_cam.join()
+    if api_worker is not None:
+        api_worker.join(timeout=30.0)
 
     print()
     print("=" * 64)
