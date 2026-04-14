@@ -8,7 +8,7 @@ DATA_ROOT = "data"
 PARTICIPANT_ID = "P1"
 
 # ─── 摄像头设置 
-FACIAL_CAMERA_INDEX  = 0      # 面部摄像头的系统设备索引（camera 1）
+FACIAL_CAMERA_INDEX  = 2      # 面部摄像头的系统设备索引（camera 1）
 TRAFFIC_CAMERA_INDEX = 1      # 交通摄像头的系统设备索引（camera 2）
 
 #720p = 1280x720 | 1080p = 1920x1080 | 4K = 3840x2160

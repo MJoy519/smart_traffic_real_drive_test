@@ -1,0 +1,20 @@
+[
+  {
+    "origin": "cyberport",
+    "origin_name": "数码港",
+    "route_type": "fast",
+    "selected_route": "fast",
+    "selected_route_label": "最快路线",
+    "best_emotion_route": null,
+    "timestamp": "2026-04-14T13:07:26.784208"
+  },
+  {
+    "origin": "cyberport",
+    "origin_name": "数码港",
+    "route_type": "emotion",
+    "selected_route": "emotion1",
+    "selected_route_label": "情感路线1（北线）",
+    "best_emotion_route": null,
+    "timestamp": "2026-04-14T16:08:52.854106"
+  }
+]

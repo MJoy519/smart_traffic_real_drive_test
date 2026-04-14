@@ -3,7 +3,6 @@ __pycache__/
 .env
 *.log
 venv/
-*.jsonl
 *.mp4
 
 settings.json
@@ -12,3 +11,6 @@ dist/
 build/
 *.exe
 .zip
+/data
+/build
+/multi_data_collection/google_interface/frontend/node_modules/

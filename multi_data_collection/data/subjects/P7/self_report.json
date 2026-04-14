@@ -1,0 +1,38 @@
+{
+  "participant_id": "P7",
+  "waypoints": [
+    {
+      "waypoint_id": 1,
+      "emotion": 1,
+      "arousal": 1,
+      "fatigue": 1,
+      "timestamp": "2026-04-14 16:45:43"
+    },
+    {
+      "waypoint_id": 2,
+      "emotion": -1,
+      "arousal": 1,
+      "fatigue": -1,
+      "timestamp": "2026-04-14 16:45:53"
+    },
+    {
+      "waypoint_id": 3,
+      "emotion": 2,
+      "arousal": 2,
+      "fatigue": 2,
+      "timestamp": "2026-04-14 16:45:58"
+    }
+  ],
+  "start": {
+    "emotion": 2,
+    "arousal": 1,
+    "fatigue": -2,
+    "timestamp": "2026-04-14 16:41:03"
+  },
+  "end": {
+    "emotion": 1,
+    "arousal": -1,
+    "fatigue": -1,
+    "timestamp": "2026-04-14 16:46:19"
+  }
+}

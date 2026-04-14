@@ -17,11 +17,52 @@ gui_app.py  —  Smart Traffic 实车采集 图形界面
   * 所有 tkinter 操作均在主线程完成
 """
 
-import json
 import os
 import sys
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  后端服务器模式
+#  当 EXE / 脚本被以 --backend-mode 参数调用时（GUI 内部生成的子进程），
+#  直接启动 FastAPI / uvicorn 并退出，不初始化 Tkinter。
+# ══════════════════════════════════════════════════════════════════════════════
+if "--backend-mode" in sys.argv:
+    from pathlib import Path as _P
+
+    # 解析 key=value 格式的命令行参数
+    _kv: dict[str, str] = {}
+    for _a in sys.argv[1:]:
+        if "=" in _a:
+            _k, _v = _a.split("=", 1)
+            _kv[_k] = _v
+
+    if _kv.get("--participant-id"):
+        os.environ["PARTICIPANT_ID"]    = _kv["--participant-id"]
+    if _kv.get("--data-root"):
+        os.environ["DATA_ROOT"]         = _kv["--data-root"]
+    if _kv.get("--frontend-dist"):
+        os.environ["FRONTEND_DIST_DIR"] = _kv["--frontend-dist"]
+
+    # 定位后端目录（frozen EXE → sys._MEIPASS，开发模式 → 脚本旁边）
+    _meipass = getattr(sys, "_MEIPASS", None)
+    _be_dir  = (_P(_meipass) if _meipass else _P(__file__).parent) / "google_interface" / "backend"
+
+    sys.path.insert(0, str(_be_dir))
+    os.chdir(str(_be_dir))
+
+    import uvicorn  # noqa: E402
+    uvicorn.run("main:app", host="127.0.0.1", port=17843, log_level="warning")
+    sys.exit(0)
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  正常 GUI 模式 —— 以下是原有导入
+# ══════════════════════════════════════════════════════════════════════════════
+
+import json
+import subprocess
 import queue
 import threading
+import time
+import webbrowser
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -49,7 +90,7 @@ _DEFAULTS: dict = {
     "gps_port":                     "COM7",
     "gps_query_interval":           10,
     "participant_id":               "P1",
-    "facial_camera_index":          0,
+    "facial_camera_index":          2,
     "traffic_camera_index":         1,
     "frame_width":                  1280,
     "frame_height":                 720,
@@ -91,7 +132,7 @@ config.DATA_ROOT                     = _settings["data_root"]
 config.VIDEO_SAVE_INTERVAL_MINUTES   = int(_settings["video_save_interval_minutes"])
 config.GPS_PORT                      = str(_settings["gps_port"])
 config.GPS_QUERY_INTERVAL            = int(_settings["gps_query_interval"])
-config.PARTICIPANT_ID                = ""
+config.PARTICIPANT_ID                = str(_settings.get("participant_id", ""))
 config.FACIAL_CAMERA_INDEX           = int(_settings["facial_camera_index"])
 config.TRAFFIC_CAMERA_INDEX          = int(_settings["traffic_camera_index"])
 config.FRAME_WIDTH                   = int(_settings["frame_width"])
@@ -241,6 +282,10 @@ class App(tk.Tk):
         # 途径点计数（GUI 侧追踪，与 collect._waypoint_count 同步）
         self._waypoint_count: int = 0
 
+        # 路线选择子进程（后端 uvicorn + 前端 vite dev server）
+        self._route_backend:  "subprocess.Popen | None" = None
+        self._route_frontend: "subprocess.Popen | None" = None
+
         _gui_stdin._app = self
         sys.stdout = _LogQueue(self._log_q)
         sys.stderr = _LogQueue(self._log_q)
@@ -362,6 +407,15 @@ class App(tk.Tk):
             command=self._start_test, **_bkw,
         )
         self._btn_test.pack(side="left", padx=(0, 8))
+
+        # 路线选择
+        self._btn_route = tk.Button(
+            btn_row, text="路线选择",
+            bg=C_SURFACE, fg=C_TEXT,
+            activebackground=C_ACCENT, activeforeground="white",
+            command=self._open_route_selection, **_bkw,
+        )
+        self._btn_route.pack(side="left", padx=(0, 8))
 
         # 开始采集
         self._btn_collect = tk.Button(
@@ -1552,6 +1606,10 @@ class App(tk.Tk):
                 state="normal", text="测试设备",
                 bg=C_SURFACE, fg=C_TEXT,
             )
+            self._btn_route.configure(
+                state="normal", text="路线选择",
+                bg=C_SURFACE, fg=C_TEXT,
+            )
             self._btn_collect.configure(
                 state="normal", text="开始采集",
                 bg=C_ACCENT, fg="white",
@@ -1566,6 +1624,7 @@ class App(tk.Tk):
                 state="disabled", text="测试中...",
                 bg=C_BORDER, fg=C_MUTED,
             )
+            self._btn_route.configure(state="disabled")
             self._btn_collect.configure(state="disabled")
             self._btn_waypoint.configure(state="disabled")
 
@@ -1574,6 +1633,7 @@ class App(tk.Tk):
             self._btn_subject_info.configure(state="disabled")
             self._btn_verbal.configure(state="normal")
             self._btn_test.configure(state="disabled")
+            self._btn_route.configure(state="disabled")
             self._btn_collect.configure(
                 state="normal", text="停止采集",
                 bg=C_RED, fg="white",
@@ -1613,7 +1673,150 @@ class App(tk.Tk):
                 "确认退出", "测试正在进行中，确定要退出吗？", parent=self,
             ):
                 return
+        self._stop_route_servers()
         self.destroy()
+
+    # ── 路线选择（Google Maps 界面）────────────────────────────────────────────
+
+    def _open_route_selection(self):
+        """打开路线选择网页界面；若受试者信息未填写则拦截。"""
+        if not config.PARTICIPANT_ID:
+            messagebox.showwarning(
+                "提示", "请先填写受试者信息。", parent=self,
+            )
+            return
+        self._start_route_servers()
+
+    @staticmethod
+    def _is_port_in_use(port: int) -> bool:
+        """检测本地端口是否已被占用。"""
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            return s.connect_ex(("127.0.0.1", port)) == 0
+
+    def _start_route_servers(self):
+        """
+        启动路线导航服务并在浏览器中打开界面。
+
+        打包后（frozen EXE）：
+          以 --backend-mode 重新调用自身 EXE，uvicorn 同时提供 API 与静态前端文件，
+          浏览器打开 http://localhost:17843/
+
+        开发模式（dist/ 已构建）：
+          同样以 --backend-mode 调用 gui_app.py，后端提供静态文件，
+          浏览器打开 http://localhost:17843/
+
+        开发模式（dist/ 尚未构建）：
+          额外启动 npm run dev，浏览器打开 http://localhost:5173/
+        """
+        self._stop_route_servers()
+
+        _no_window = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+        # ── 确定前端 dist 目录 ────────────────────────────────────────────────
+        _meipass = getattr(sys, "_MEIPASS", None)
+        if _meipass:
+            frontend_dist = Path(_meipass) / "google_interface" / "frontend" / "dist"
+        else:
+            frontend_dist = _HERE / "google_interface" / "frontend" / "dist"
+
+        # ── 若端口已有服务，直接复用（避免重复启动/端口冲突）──────────────
+        if self._is_port_in_use(17843):
+            self._append_log(
+                f"[GUI] 检测到路线服务已运行，直接复用"
+                f"（受试者: {config.PARTICIPANT_ID}）\n"
+            )
+            _open_url = "http://localhost:17843/"
+            def _open_reuse():
+                time.sleep(0.5)
+                webbrowser.open(_open_url)
+                self._log_q.put("[GUI] 已在浏览器中打开路线选择界面\n")
+            threading.Thread(target=_open_reuse, daemon=True, name="route_browser_thread").start()
+            return
+
+        # ── 构造后端启动命令 ──────────────────────────────────────────────────
+        # frozen EXE：直接调用自身；开发模式：python gui_app.py
+        if getattr(sys, "frozen", False):
+            entry = [sys.executable]
+        else:
+            entry = [sys.executable, str(_HERE / "gui_app.py")]
+
+        cmd = entry + [
+            "--backend-mode",
+            f"--participant-id={config.PARTICIPANT_ID}",
+            f"--data-root={config.DATA_ROOT}",
+            f"--frontend-dist={frontend_dist}",
+        ]
+
+        try:
+            self._route_backend = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=_no_window,
+            )
+            self._append_log(
+                f"[GUI] 路线导航服务已启动（受试者: {config.PARTICIPANT_ID}）\n"
+            )
+        except Exception as exc:
+            self._append_log(f"[GUI] 路线导航服务启动失败: {exc}\n")
+            messagebox.showerror(
+                "启动失败",
+                f"无法启动路线导航服务：\n{exc}",
+                parent=self,
+            )
+            return
+
+        # ── 开发模式且 dist/ 尚未构建 → 同时启动 npm dev server ─────────────
+        if not getattr(sys, "frozen", False) and not frontend_dist.exists():
+            npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+            frontend_dir = _HERE / "google_interface" / "frontend"
+            try:
+                self._route_frontend = subprocess.Popen(
+                    [npm_cmd, "run", "dev"],
+                    cwd=str(frontend_dir),
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=_no_window,
+                )
+                self._append_log("[GUI] 开发模式：前端 dev server 已启动（localhost:5173）\n")
+                _open_url   = "http://localhost:5173/"
+                _open_delay = 3
+            except Exception as exc:
+                self._append_log(f"[GUI] 前端 dev server 启动失败: {exc}\n")
+                _open_url   = "http://localhost:17843/"
+                _open_delay = 2
+        else:
+            _open_url   = "http://localhost:17843/"
+            _open_delay = 2
+
+        # ── 延迟后打开浏览器（先确认后端已就绪）─────────────────────────────
+        def _open():
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                if self._is_port_in_use(17843):
+                    break
+                time.sleep(0.3)
+            else:
+                self._log_q.put("[GUI] 路线服务启动超时，请重试\n")
+                return
+            time.sleep(0.3)
+            webbrowser.open(_open_url)
+            self._log_q.put("[GUI] 已在浏览器中打开路线选择界面\n")
+
+        threading.Thread(target=_open, daemon=True, name="route_browser_thread").start()
+
+    def _stop_route_servers(self):
+        """终止路线选择的后端与前端子进程。"""
+        for attr in ("_route_backend", "_route_frontend"):
+            proc: "subprocess.Popen | None" = getattr(self, attr, None)
+            if proc is not None:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+                setattr(self, attr, None)
 
     # ── 工具 ──────────────────────────────────────────────────────────────────
 

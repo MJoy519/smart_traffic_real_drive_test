@@ -1,0 +1,4 @@
+{"segment": 1, "video_file": "P7_1.mp4", "start_time": "2026-04-14 16:45:35", "end_time": "2026-04-14 16:45:40", "frame_count": 146, "waypoint_id": 1}
+{"segment": 2, "video_file": "P7_2.mp4", "start_time": "2026-04-14 16:45:40", "end_time": "2026-04-14 16:45:49", "frame_count": 270, "waypoint_id": 2}
+{"segment": 3, "video_file": "P7_3.mp4", "start_time": "2026-04-14 16:45:49", "end_time": "2026-04-14 16:45:56", "frame_count": 203, "waypoint_id": 3}
+{"segment": 4, "video_file": "P7_4.mp4", "start_time": "2026-04-14 16:45:56", "end_time": "2026-04-14 16:46:04", "frame_count": 234, "waypoint_id": "endpoint"}
