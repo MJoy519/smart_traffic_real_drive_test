@@ -10,7 +10,6 @@ multi_data_collection/settings.json
 dist/
 build/
 *.exe
-.zip
+*.zip
 /data
-/build
 /multi_data_collection/google_interface/frontend/node_modules/
