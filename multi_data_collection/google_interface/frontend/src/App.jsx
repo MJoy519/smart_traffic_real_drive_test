@@ -3,15 +3,15 @@ import { useJsApiLoader } from '@react-google-maps/api'
 import MapView from './components/MapView'
 import ControlPanel from './components/ControlPanel'
 import NavigationBar from './components/NavigationBar'
-import { calculateEmotionRoute, getTestModeConfig, saveRouteSelection } from './api/routeApi'
+import { calculateEmotionRoute, getTrafficData, getTestModeConfig, saveRouteSelection } from './api/routeApi'
 import { useGeolocation } from './hooks/useGeolocation'
 
 const MAPS_LIBRARIES = ['places', 'geometry']
 
-// 起终点坐标（与 config.py 保持一致）
+// 起终点坐标（与 config.py ORIGINS 保持一致）
 const LOCATION_MAP = {
-  cyberport:  { lat: 22.262357, lng: 114.130918 },  // R1P01
-  ma_on_shan: { lat: 22.426784, lng: 114.228231 },  // R1P21
+  cyberport:  { lat: 22.262372, lng: 114.130906 },
+  ma_on_shan: { lat: 22.426133, lng: 114.232172 },
 }
 
 // 每条路线对应的途经点（中间点设 stopover: false，首尾由 origin/destination 提供）
@@ -278,22 +278,31 @@ export default function App() {
     setSelectedRouteKey(key)
   }, [])
 
-  // ── 回调：计算情感路线 ──────────────────────────────────────────
+  // ── 回调：获取交通数据 / 计算情感路线 ─────────────────────────────
+  // 测试模式：调用 /get-traffic-data，获取真实 BTI，不推荐路线
+  // 正式模式：调用 /calculate-emotion-route，获取 BTI + 推荐路线
   const handleCalculateEmotion = useCallback(async () => {
     if (!origin) return
     setCalculating(true)
     try {
-      const result = await calculateEmotionRoute(origin, null)
-      setEmotionResult(result)
-      const recommended = result.recommended_route
-      setBestEmotionRoute(recommended)
-      setSelectedRouteKey(recommended === 1 ? 'emotion1' : 'emotion2')
+      if (testMode) {
+        const result = await getTrafficData(origin, null)
+        // 保留 test_mode 标志供 ControlPanel 判断显示内容
+        setEmotionResult({ ...result, test_mode: true })
+        // 测试模式不自动推荐路线，用户手动选择
+      } else {
+        const result = await calculateEmotionRoute(origin, null)
+        setEmotionResult(result)
+        const recommended = result.recommended_route
+        setBestEmotionRoute(recommended)
+        setSelectedRouteKey(recommended === 1 ? 'emotion1' : 'emotion2')
+      }
     } catch (err) {
-      console.error('计算情感路线失败:', err)
+      console.error('交通数据获取/计算失败:', err)
     } finally {
       setCalculating(false)
     }
-  }, [origin])
+  }, [origin, testMode])
 
   // ── 回调：定位 ──────────────────────────────────────────────────
   const handleLocate = useCallback(() => {
@@ -419,14 +428,12 @@ export default function App() {
           fastRoute={fastRoute}
           emotionRoute1={emotionRoute1}
           emotionRoute2={emotionRoute2}
-          locationState={{ loading: locLoading, error: locError, atOrigin }}
           calculating={calculating}
           testMode={testMode}
           testModeRoute={testModeRoute}
           onSelectOrigin={handleSelectOrigin}
           onSelectMode={handleSelectMode}
           onSelectRoute={handleSelectRoute}
-          onLocate={handleLocate}
           onCalculateEmotion={handleCalculateEmotion}
           onConfirmNavigation={handleConfirmStep}
           onStartNavigation={handleStartNavigation}

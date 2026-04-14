@@ -132,7 +132,7 @@ config.DATA_ROOT                     = _settings["data_root"]
 config.VIDEO_SAVE_INTERVAL_MINUTES   = int(_settings["video_save_interval_minutes"])
 config.GPS_PORT                      = str(_settings["gps_port"])
 config.GPS_QUERY_INTERVAL            = int(_settings["gps_query_interval"])
-config.PARTICIPANT_ID                = str(_settings.get("participant_id", ""))
+config.PARTICIPANT_ID                = ""   # 每次启动重置，由用户在"受试者信息"中填写
 config.FACIAL_CAMERA_INDEX           = int(_settings["facial_camera_index"])
 config.TRAFFIC_CAMERA_INDEX          = int(_settings["traffic_camera_index"])
 config.FRAME_WIDTH                   = int(_settings["frame_width"])
@@ -649,7 +649,8 @@ class App(tk.Tk):
         row0 = tk.Frame(frm_basic, bg=C_CARD)
         row0.pack(fill="x", pady=4)
         tk.Label(row0, text="测试编号：", **lbl_kw, width=9).pack(side="left")
-        pid_var    = tk.StringVar(value="")
+        # 本次会话已保存过受试者时预填编号；首次启动（仅来自settings.json）保持空
+        pid_var    = tk.StringVar(value=config.PARTICIPANT_ID if self._participant_dir is not None else "")
         history_on = tk.BooleanVar(value=False)
 
         # 固定位置容器，Entry 和 Combobox 在其中切换，容器本身不移动
@@ -846,6 +847,39 @@ class App(tk.Tk):
             refresh_waypoints()
 
         load_cb.bind("<<ComboboxSelected>>", on_load_subject)
+
+        # ── 若本次会话已保存过受试者，自动加载其数据（首次启动不触发）────────
+        _cur_pid = config.PARTICIPANT_ID if self._participant_dir is not None else ""
+        if _cur_pid:
+            _cur_dir = subjects_root / _cur_pid
+            if _cur_dir.exists():
+                _info, _sr = {}, {}
+                try:
+                    with open(_cur_dir / "participant_info.json", "r", encoding="utf-8") as _f:
+                        _info = json.load(_f)
+                except Exception:
+                    pass
+                try:
+                    with open(_cur_dir / "self_report.json", "r", encoding="utf-8") as _f:
+                        _sr = json.load(_f)
+                except Exception:
+                    pass
+                # 回填日期
+                _date_str = _info.get("date", "")
+                try:
+                    _parts = _date_str.replace("年", "|").replace("月", "|").replace("日", "").split("|")
+                    month_var.set(str(int(_parts[1])) if len(_parts) > 1 else str(now.month))
+                    day_var.set(str(int(_parts[2]))   if len(_parts) > 2 else str(now.day))
+                except Exception:
+                    pass
+                weather_var.set(_info.get("weather", "晴"))
+                exp_var.set(_info.get("experimenter", ""))
+                # 回填情绪自评状态
+                state["start"]     = _sr.get("start",     {})
+                state["end"]       = _sr.get("end",       {})
+                state["waypoints"] = _sr.get("waypoints", [])
+                on_type_change()
+                refresh_waypoints()
 
         # ── 保存 / 取消 ───────────────────────────────────────────────────────
         tk.Frame(inner, bg=C_BORDER, height=1).pack(fill="x", padx=PAD, pady=(12, 8))
@@ -1727,7 +1761,7 @@ class App(tk.Tk):
                 f"[GUI] 检测到路线服务已运行，直接复用"
                 f"（受试者: {config.PARTICIPANT_ID}）\n"
             )
-            _open_url = "http://localhost:17843/"
+            _open_url = f"http://localhost:17843/?t={int(time.time())}"
             def _open_reuse():
                 time.sleep(0.5)
                 webbrowser.open(_open_url)
@@ -1781,14 +1815,14 @@ class App(tk.Tk):
                     creationflags=_no_window,
                 )
                 self._append_log("[GUI] 开发模式：前端 dev server 已启动（localhost:5173）\n")
-                _open_url   = "http://localhost:5173/"
+                _open_url   = f"http://localhost:5173/?t={int(time.time())}"
                 _open_delay = 3
             except Exception as exc:
                 self._append_log(f"[GUI] 前端 dev server 启动失败: {exc}\n")
-                _open_url   = "http://localhost:17843/"
+                _open_url   = f"http://localhost:17843/?t={int(time.time())}"
                 _open_delay = 2
         else:
-            _open_url   = "http://localhost:17843/"
+            _open_url   = f"http://localhost:17843/?t={int(time.time())}"
             _open_delay = 2
 
         # ── 延迟后打开浏览器（先确认后端已就绪）─────────────────────────────

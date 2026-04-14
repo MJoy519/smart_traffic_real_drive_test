@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
-  MapPin, Zap, Heart, ChevronRight, ChevronLeft, LocateFixed,
-  CheckCircle2, AlertCircle, Loader2, Clock, TestTube2,
+  MapPin, Zap, Heart, ChevronRight, ChevronLeft,
+  CheckCircle2, Loader2, TestTube2, BarChart2,
 } from 'lucide-react'
 import clsx from 'clsx'
 import RouteCard from './RouteCard'
@@ -60,7 +60,7 @@ function ModeButton({ mode, selected, onClick, disabled }) {
 
 /**
  * 控制面板主组件
- * 管理整个用户操作流程（起点 → 路线选择 → 出行时间 → 导航）
+ * 管理整个用户操作流程（起点 → 路线选择 → 确认出行 → 导航）
  */
 export default function ControlPanel({
   // 状态
@@ -73,7 +73,6 @@ export default function ControlPanel({
   fastRoute,
   emotionRoute1,
   emotionRoute2,
-  locationState,      // { loading, error, atOrigin }
   calculating,
   testMode,
   testModeRoute,
@@ -82,28 +81,24 @@ export default function ControlPanel({
   onSelectOrigin,
   onSelectMode,
   onSelectRoute,
-  onLocate,
   onCalculateEmotion,
   onConfirmNavigation,
   onStartNavigation,
   onBack,
 }) {
-  const [departureType, setDepartureType] = useState('now')  // 'now' | 'custom'
-  const [customTime, setCustomTime] = useState('')
-
   const currentStepIndex = STEPS.indexOf(step)
 
-  // 导航确认时把时间传出
-  const handleConfirm = () => {
-    const time = departureType === 'now' ? null : customTime || null
-    onStartNavigation(time)
-  }
-
-  // ── 渲染拥堵指数（来自 emotionResult） ──────────────────────────
+  // ── 获取路线 BTI 值（适配两种结果结构） ─────────────────────────
+  // 测试模式（getTrafficData）：emotionResult.route_1.computed.total_bti
+  // 正式模式（calculateEmotionRoute）：emotionResult.route_1_analysis.total_bti
   const getCongestionIndex = (routeId) => {
     if (!emotionResult) return null
+    if (emotionResult.test_mode && emotionResult.route_1) {
+      const route = routeId === 1 ? emotionResult.route_1 : emotionResult.route_2
+      return route?.computed?.total_bti ?? null
+    }
     const analysis = routeId === 1 ? emotionResult.route_1_analysis : emotionResult.route_2_analysis
-    return analysis?.total_congestion_index ?? null
+    return analysis?.total_bti ?? null
   }
 
   return (
@@ -113,7 +108,6 @@ export default function ControlPanel({
         {/* ── 顶部 Header ─────────────────────────────────────────── */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-2 mb-1">
-            {/* 返回按钮（第2、3步显示） */}
             {step !== 'select_origin' && (
               <button
                 onClick={onBack}
@@ -205,7 +199,6 @@ export default function ControlPanel({
               <div>
                 <p className="text-sm font-medium text-slate-600 mb-2">所有路线</p>
                 <div className="space-y-2">
-                  {/* Fast 路线 */}
                   <RouteCard
                     routeKey="fast"
                     directionsResult={fastRoute}
@@ -214,7 +207,6 @@ export default function ControlPanel({
                     onClick={() => mode === 'fast' && onSelectRoute('fast')}
                     disabled={mode !== 'fast'}
                   />
-                  {/* Emotion 路线 1 */}
                   <RouteCard
                     routeKey="emotion1"
                     directionsResult={emotionRoute1}
@@ -224,7 +216,6 @@ export default function ControlPanel({
                     onClick={() => mode === 'emotion' && onSelectRoute('emotion1')}
                     disabled={mode !== 'emotion'}
                   />
-                  {/* Emotion 路线 2 */}
                   <RouteCard
                     routeKey="emotion2"
                     directionsResult={emotionRoute2}
@@ -237,75 +228,49 @@ export default function ControlPanel({
                 </div>
               </div>
 
-              {/* 情感模式 - 位置检测 + 计算 */}
+              {/* 情感模式 - 交通数据获取 / 路线计算 */}
               {mode === 'emotion' && (
                 <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-2">
                   <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">情感路线计算</p>
 
-                  {/* 位置状态 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      {locationState.atOrigin ? (
-                        <CheckCircle2 size={15} className="text-emerald-500" />
-                      ) : locationState.error ? (
-                        <AlertCircle size={15} className="text-red-400" />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
-                      )}
-                      <span className="text-slate-700">
-                        {locationState.atOrigin
-                          ? '已到达起点'
-                          : locationState.error
-                          ? locationState.error
-                          : '尚未验证位置'}
-                      </span>
+                  {/* 计算结果 / 数据获取结果 */}
+                  {emotionResult?.test_mode && emotionResult?.route_1 && (
+                    <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex items-center gap-2">
+                      <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
+                      <span className="font-medium">已成功获取数据并保存</span>
                     </div>
-                    <button
-                      onClick={onLocate}
-                      disabled={locationState.loading}
-                      className="flex items-center gap-1 text-xs bg-white border border-purple-300 text-purple-600 px-2.5 py-1.5 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
-                    >
-                      {locationState.loading
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : <LocateFixed size={12} />}
-                      {locationState.loading ? '定位中' : '检查位置'}
-                    </button>
-                  </div>
-
-                  {/* 计算结果 */}
-                  {emotionResult && !emotionResult.test_mode && (
+                  )}
+                  {emotionResult && !emotionResult.test_mode && emotionResult.reason && (
                     <div className="text-xs text-slate-600 bg-white rounded-lg p-2">
                       {emotionResult.reason}
                     </div>
                   )}
-                  {emotionResult?.test_mode && (
-                    <div className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 flex items-center gap-1">
-                      <TestTube2 size={11} />
-                      {emotionResult.reason}
-                    </div>
-                  )}
 
-                  {/* 计算按钮 */}
+                  {/* 操作按钮：测试模式→"获取交通数据"，正式模式→"计算最优情感路线" */}
                   <button
                     onClick={onCalculateEmotion}
-                    disabled={calculating || (!locationState.atOrigin && !testMode)}
+                    disabled={calculating}
                     className={clsx(
                       'w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-colors',
-                      calculating || (!locationState.atOrigin && !testMode)
+                      calculating
                         ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                         : 'bg-purple-600 hover:bg-purple-700 text-white'
                     )}
                   >
-                    {calculating
-                      ? <><Loader2 size={15} className="animate-spin" /> 计算中...</>
-                      : <><Zap size={15} /> 计算最优情感路线</>}
+                    {calculating ? (
+                      <><Loader2 size={15} className="animate-spin" /> 获取中...</>
+                    ) : testMode ? (
+                      <><BarChart2 size={15} /> 获取交通数据</>
+                    ) : (
+                      <><Zap size={15} /> 计算最优情感路线</>
+                    )}
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* ═══ STEP 3: 选择出行时间 ════════════════════════════════ */}
+          {/* ═══ STEP 3: 确认出行（立即出发） ════════════════════════ */}
           {step === 'select_time' && (
             <div className="space-y-4">
               {/* 当前选中路线摘要 */}
@@ -330,44 +295,10 @@ export default function ControlPanel({
                 />
               </div>
 
-              {/* 出发时间 */}
-              <div>
-                <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                  <Clock size={15} className="text-slate-400" />
-                  预计出发时间
-                </p>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <button
-                    onClick={() => setDepartureType('now')}
-                    className={clsx(
-                      'py-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
-                      departureType === 'now'
-                        ? 'border-indigo-500 bg-indigo-500 text-white'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    立即出发
-                  </button>
-                  <button
-                    onClick={() => setDepartureType('custom')}
-                    className={clsx(
-                      'py-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
-                      departureType === 'custom'
-                        ? 'border-indigo-500 bg-indigo-500 text-white'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    指定时间
-                  </button>
-                </div>
-                {departureType === 'custom' && (
-                  <input
-                    type="datetime-local"
-                    value={customTime}
-                    onChange={(e) => setCustomTime(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
-                )}
+              {/* 出发方式：仅支持立即出发 */}
+              <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-indigo-500 flex-shrink-0" />
+                <span className="text-sm font-semibold text-indigo-700">立即出发</span>
               </div>
             </div>
           )}
@@ -409,14 +340,8 @@ export default function ControlPanel({
 
           {step === 'select_time' && (
             <button
-              onClick={handleConfirm}
-              disabled={departureType === 'custom' && !customTime}
-              className={clsx(
-                'w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all',
-                (departureType !== 'custom' || customTime)
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              )}
+              onClick={() => onStartNavigation(null)}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all"
             >
               开始导航
               <ChevronRight size={16} />

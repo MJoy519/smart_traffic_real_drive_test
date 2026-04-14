@@ -189,6 +189,9 @@ def test_cameras():
         key = cv2.waitKey(30) & 0xFF   # 30ms ≈ 33fps 刷新率
         if key in (ord("q"), ord("Q"), 27):   # q / Q / ESC 均可退出
             break
+        # 点击窗口右上角 × 关闭按钮时，WND_PROP_VISIBLE 变为 < 1
+        if cv2.getWindowProperty(win_title, cv2.WND_PROP_VISIBLE) < 1:
+            break
 
     running_flag[0] = False
     for t in threads:

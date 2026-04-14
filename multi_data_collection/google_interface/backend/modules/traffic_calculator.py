@@ -1,31 +1,36 @@
 """
-核心模块：计算最优情感路线
-============================
-输入：起点标识 + 出发时间
-输出：1 或 2（代表推荐的情感路线编号）
+核心模块：交通数据获取 + 最优情感路线计算
+==========================================
 
-测试模式（TEST_MODE=True）：跳过 API，直接返回 TEST_MODE_FORCED_ROUTE。
+提供两个主要函数：
+
+  get_traffic_data_for_routes(origin_key, departure_time)
+      获取两条情感路线的实时交通数据（测试模式 / 正式模式均可调用）。
+      返回原始 API 字段 + 逐段 BTI 计算结果。
+
+  calculate_best_emotion_route(origin_key, departure_time)
+      在 get_traffic_data_for_routes 基础上计算路线综合得分，返回推荐路线。
+      仅在正式模式（TEST_MODE=False）下使用。
+
+测试模式说明：
+  TEST_MODE=True  → "获取交通数据"按钮，调用真实 API，不推荐路线
+  TEST_MODE=False → "计算最优情感路线"按钮，调用 API 并给出推荐
 """
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime
-from config import (
-    TEST_MODE,
-    TEST_MODE_FORCED_ROUTE,
-    ROUTE_1_SEGMENTS,
-    ROUTE_2_SEGMENTS,
-)
-from modules.segment_analyzer import analyze_route_segments
+from config import TEST_MODE
+from modules.segment_analyzer import fetch_route_traffic
 
 
-def calculate_best_emotion_route(
+def get_traffic_data_for_routes(
     origin_key: str,
     departure_time: datetime | None = None,
 ) -> dict:
     """
-    分析两条情感路线的实时拥堵，返回推荐路线编号。
+    获取两条情感路线的实时交通数据（两次 Directions API 调用）。
 
     Args:
         origin_key:     'cyberport' 或 'ma_on_shan'
@@ -33,64 +38,127 @@ def calculate_best_emotion_route(
 
     Returns:
         {
-          "recommended_route": 1 | 2,
-          "reason": str,
-          "route_1_analysis": dict | None,
-          "route_2_analysis": dict | None,
-          "test_mode": bool
+          "timestamp":   str,          # 出发时间 ISO
+          "origin_key":  str,
+          "test_mode":   bool,
+          "route_1": {
+            "raw_api_response": dict,
+            "computed": {
+              "departure_time_iso": str,
+              "segments": [...],
+              "total_distance_m": int,
+              "total_free_flow_duration_s": int,
+              "total_actual_duration_s": int,
+              "total_congestion_delay_s": int,
+              "total_bti": float,
+            }
+          },
+          "route_2": { ... }           # 同 route_1 结构
         }
     """
     if departure_time is None:
         departure_time = datetime.now()
 
-    # ── 测试模式：不调用 API ──────────────────────────────────────────
-    if TEST_MODE:
-        return {
-            "recommended_route": TEST_MODE_FORCED_ROUTE,
-            "reason":            f"[测试模式] 强制选择路线 {TEST_MODE_FORCED_ROUTE}",
-            "route_1_analysis":  None,
-            "route_2_analysis":  None,
-            "test_mode":         True,
-            "departure_time":    departure_time.isoformat(),
+    route_1 = fetch_route_traffic(origin_key, 1, departure_time)
+    route_2 = fetch_route_traffic(origin_key, 2, departure_time)
+
+    return {
+        "timestamp":  departure_time.isoformat(),
+        "origin_key": origin_key,
+        "test_mode":  TEST_MODE,
+        "route_1":    route_1,
+        "route_2":    route_2,
+    }
+
+
+def calculate_best_emotion_route(
+    origin_key: str,
+    departure_time: datetime | None = None,
+) -> dict:
+    """
+    获取交通数据并计算最优情感路线得分，返回推荐路线编号。
+
+    仅在正式模式（TEST_MODE=False）下调用此函数；
+    测试模式请直接调用 get_traffic_data_for_routes。
+
+    Returns:
+        {
+          "recommended_route": 1 | 2,
+          "reason": str,
+          "route_1_analysis": {"total_bti": float, "score": float, "segments": [...]},
+          "route_2_analysis": {"total_bti": float, "score": float, "segments": [...]},
+          "traffic_data": dict,   # get_traffic_data_for_routes 的完整返回
+          "test_mode": False,
+          "departure_time": str,
         }
+    """
+    if departure_time is None:
+        departure_time = datetime.now()
 
-    # ── 正式模式：调用 Google API ────────────────────────────────────
-    if origin_key == "cyberport":
-        segments_1 = ROUTE_1_SEGMENTS
-        segments_2 = ROUTE_2_SEGMENTS
-    else:
-        # 马鞍山出发：反转分段顺序并交换 start/end
-        segments_1 = [
-            {**seg, "start": seg["end"], "end": seg["start"]}
-            for seg in reversed(ROUTE_1_SEGMENTS)
-        ]
-        segments_2 = [
-            {**seg, "start": seg["end"], "end": seg["start"]}
-            for seg in reversed(ROUTE_2_SEGMENTS)
-        ]
+    traffic = get_traffic_data_for_routes(origin_key, departure_time)
 
-    analysis_1 = analyze_route_segments(segments_1, departure_time)
-    analysis_2 = analyze_route_segments(segments_2, departure_time)
+    computed_1 = traffic["route_1"]["computed"]
+    computed_2 = traffic["route_2"]["computed"]
 
-    idx_1 = analysis_1["total_congestion_index"]
-    idx_2 = analysis_2["total_congestion_index"]
+    score_1 = _compute_route_score(computed_1)
+    score_2 = _compute_route_score(computed_2)
 
-    if idx_1 <= idx_2:
+    if score_1 <= score_2:
         recommended = 1
         reason = (
-            f"路线1（北线）拥堵指数 {idx_1:.4f} ≤ 路线2（南线）{idx_2:.4f}，推荐北线"
+            f"路线1（北线）综合得分 {score_1:.4f} ≤ 路线2（南线）{score_2:.4f}，推荐北线"
         )
     else:
         recommended = 2
         reason = (
-            f"路线2（南线）拥堵指数 {idx_2:.4f} < 路线1（北线）{idx_1:.4f}，推荐南线"
+            f"路线2（南线）综合得分 {score_2:.4f} < 路线1（北线）{score_1:.4f}，推荐南线"
         )
 
     return {
         "recommended_route": recommended,
         "reason":            reason,
-        "route_1_analysis":  analysis_1,
-        "route_2_analysis":  analysis_2,
-        "test_mode":         False,
-        "departure_time":    departure_time.isoformat(),
+        "route_1_analysis":  {
+            "total_bti": computed_1["total_bti"],
+            "score":     score_1,
+            "segments":  computed_1["segments"],
+        },
+        "route_2_analysis":  {
+            "total_bti": computed_2["total_bti"],
+            "score":     score_2,
+            "segments":  computed_2["segments"],
+        },
+        "traffic_data":  traffic,
+        "test_mode":     False,
+        "departure_time": departure_time.isoformat(),
     }
+
+
+def _compute_route_score(computed: dict) -> float:
+    """
+    路线综合得分（占位框架，待情感权重公式确定后替换）。
+
+    当前实现：距离加权 BTI 均值。
+    公式：score = Σ(BTI_i × distance_i) / Σ(distance_i)
+    得分越低越好（0 = 完全畅通）。
+
+    TODO: 确定情感数据权重函数后，在此替换权重计算逻辑。
+          示例扩展：score = Σ(BTI_i × distance_i × emotion_weight_i) / Σ(distance_i)
+
+    Args:
+        computed: fetch_route_traffic 返回的 "computed" 字段
+
+    Returns:
+        float: 综合得分（越低越好）
+    """
+    segments       = computed.get("segments", [])
+    total_distance = computed.get("total_distance_m", 0)
+
+    if not segments or total_distance == 0:
+        return computed.get("total_bti", 0.0)
+
+    weighted_bti = sum(
+        seg["bti"] * seg["distance_m"]
+        for seg in segments
+    ) / total_distance
+
+    return round(weighted_bti, 4)

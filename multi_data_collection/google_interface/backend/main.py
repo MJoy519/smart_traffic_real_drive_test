@@ -1,6 +1,6 @@
 """
 FastAPI 后端入口
-提供情感路线计算、路线数据查询等接口。
+提供情感路线计算、交通数据获取、路线数据查询等接口。
 
 路由均挂载在 /api 前缀下，以便生产模式中同一服务器同时托管
 React 静态前端（根路径 /）和 API（/api/...）。
@@ -13,13 +13,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import ORIGINS, TEST_MODE, TEST_MODE_FORCED_ROUTE
-from modules.traffic_calculator import calculate_best_emotion_route
+from config import ORIGINS, TEST_MODE
+from modules.traffic_calculator import (
+    calculate_best_emotion_route,
+    get_traffic_data_for_routes,
+)
 
 app = FastAPI(title="Smart Traffic API", version="1.0.0")
 
@@ -45,7 +49,6 @@ app.add_middleware(
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  API Router（/api 前缀）
-#  生产模式与开发模式均通过此前缀访问，Vite proxy 无需 rewrite。
 # ══════════════════════════════════════════════════════════════════════════════
 
 api = APIRouter(prefix="/api")
@@ -58,6 +61,58 @@ class EmotionRouteRequest(BaseModel):
     departure_time: Optional[str] = None  # ISO 格式，默认当前时间
 
 
+# ── 内部工具：解析出发时间 ─────────────────────────────────────────────
+
+def _parse_departure_time(departure_time_str: Optional[str]) -> Optional[datetime]:
+    if not departure_time_str:
+        return None
+    try:
+        return datetime.fromisoformat(departure_time_str)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="时间格式错误，请使用 ISO 格式：2026-04-10T08:30:00",
+        )
+
+
+# ── 内部工具：保存交通数据到受试者文件夹 ─────────────────────────────
+
+def _save_traffic_data(data: dict, call_mode: str) -> None:
+    """
+    将交通数据追加保存到受试者文件夹的 traffic_data.json。
+
+    call_mode: 'get_traffic_data' | 'calculate_emotion_route'
+    受试者 ID 与数据根目录由 GUI 启动时通过环境变量注入。
+    未配置环境变量时静默跳过（不影响接口响应）。
+    """
+    participant_id = os.environ.get("PARTICIPANT_ID", "").strip()
+    data_root      = os.environ.get("DATA_ROOT", "").strip()
+    if not participant_id or not data_root:
+        return
+
+    subj_dir = Path(data_root) / "subjects" / participant_id
+    subj_dir.mkdir(parents=True, exist_ok=True)
+
+    traffic_file = subj_dir / "traffic_data.json"
+    records: list = []
+    if traffic_file.exists():
+        try:
+            with open(traffic_file, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            records = existing if isinstance(existing, list) else [existing]
+        except Exception:
+            records = []
+
+    records.append({
+        "call_mode":    call_mode,
+        "saved_at":     datetime.now().isoformat(),
+        **data,
+    })
+
+    with open(traffic_file, "w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+
+
 # ── 路由 ─────────────────────────────────────────────────────────────
 
 @api.get("/")
@@ -65,29 +120,62 @@ def root():
     return {"message": "Smart Traffic API is running", "version": "1.0.0"}
 
 
-@api.post("/calculate-emotion-route")
-async def calculate_emotion_route(request: EmotionRouteRequest):
-    """计算最优情感路线，返回推荐路线编号（1 或 2）及详细分析数据。"""
+@api.post("/get-traffic-data")
+async def get_traffic_data(request: EmotionRouteRequest):
+    """
+    获取两条情感路线的实时交通数据（测试模式专用）。
+    调用真实 Google Directions API，返回逐段 BTI 及原始 API 字段。
+    结果同步保存到受试者文件夹（traffic_data.json）。
+    """
     if request.origin_key not in ORIGINS:
         raise HTTPException(
             status_code=400,
             detail=f"无效起点: {request.origin_key}，可选: cyberport, ma_on_shan",
         )
 
-    departure_time: Optional[datetime] = None
-    if request.departure_time:
-        try:
-            departure_time = datetime.fromisoformat(request.departure_time)
-        except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="时间格式错误，请使用 ISO 格式：2026-04-10T08:30:00",
-            )
+    departure_time = _parse_departure_time(request.departure_time)
+
+    result = get_traffic_data_for_routes(
+        origin_key=request.origin_key,
+        departure_time=departure_time,
+    )
+
+    _save_traffic_data(result, call_mode="get_traffic_data")
+    return result
+
+
+@api.post("/calculate-emotion-route")
+async def calculate_emotion_route(request: EmotionRouteRequest):
+    """
+    计算最优情感路线（正式模式）。
+    获取实时交通数据 + 计算综合得分，返回推荐路线编号及详细分析数据。
+    交通数据同步保存到受试者文件夹（traffic_data.json）。
+    """
+    if request.origin_key not in ORIGINS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"无效起点: {request.origin_key}，可选: cyberport, ma_on_shan",
+        )
+
+    departure_time = _parse_departure_time(request.departure_time)
 
     result = calculate_best_emotion_route(
         origin_key=request.origin_key,
         departure_time=departure_time,
     )
+
+    # 保存交通数据（traffic_data 字段中含完整原始和计算数据）
+    if result.get("traffic_data"):
+        _save_traffic_data(
+            {**result["traffic_data"], "recommendation": {
+                "recommended_route": result["recommended_route"],
+                "reason":            result["reason"],
+                "route_1_score":     result["route_1_analysis"]["score"],
+                "route_2_score":     result["route_2_analysis"]["score"],
+            }},
+            call_mode="calculate_emotion_route",
+        )
+
     return result
 
 
@@ -114,10 +202,7 @@ async def get_origins():
 @api.get("/config/test-mode")
 async def get_test_mode():
     """获取当前测试模式配置。"""
-    return {
-        "test_mode":    TEST_MODE,
-        "forced_route": TEST_MODE_FORCED_ROUTE if TEST_MODE else None,
-    }
+    return {"test_mode": TEST_MODE}
 
 
 # ── 路线选择保存 ──────────────────────────────────────────────────────
@@ -135,10 +220,10 @@ _ROUTE_LABEL_MAP = {
 
 
 class RouteSelectionData(BaseModel):
-    origin: str                          # 'cyberport' | 'ma_on_shan'
-    route_type: str                      # 'fast' | 'emotion'
-    selected_route: str                  # 'fast' | 'emotion1' | 'emotion2'
-    best_emotion_route: Optional[int] = None  # 1 或 2，仅体验路线有效
+    origin: str
+    route_type: str                           # 'fast' | 'emotion'
+    selected_route: str                       # 'fast' | 'emotion1' | 'emotion2'
+    best_emotion_route: Optional[int] = None  # 1 或 2，仅情感路线有效
 
 
 @api.post("/save-route")
@@ -196,13 +281,28 @@ async def save_route_selection(data: RouteSelectionData):
 app.include_router(api)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  生产模式：托管 React 静态文件（FRONTEND_DIST_DIR 由 GUI 子进程传入）
-#  挂载须在所有 API 路由注册之后，否则 / 会被静态文件接管而导致 /api 失效
+#  生产模式：托管 React 静态文件
+#  挂载须在所有 API 路由注册之后
 # ══════════════════════════════════════════════════════════════════════════════
 
 _dist_dir = os.environ.get("FRONTEND_DIST_DIR", "").strip()
 if _dist_dir and os.path.isdir(_dist_dir):
     try:
+        # 单独注册根路径，返回 index.html 并附加 no-cache 头，
+        # 防止浏览器缓存旧版本；JS/CSS 已有内容哈希名，无需额外处理。
+        _index_html = os.path.join(_dist_dir, "index.html")
+
+        @app.get("/", include_in_schema=False)
+        async def _serve_index(request: Request):
+            return FileResponse(
+                _index_html,
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma":        "no-cache",
+                    "Expires":       "0",
+                },
+            )
+
         app.mount("/", StaticFiles(directory=_dist_dir, html=True), name="frontend")
     except Exception as _e:
         print(f"[backend] 静态文件挂载失败（API-only 模式）: {_e}")
