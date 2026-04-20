@@ -19,7 +19,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import ORIGINS, TEST_MODE
+from config import (
+    ORIGINS, TEST_MODE, ROUTE_VERSION,
+    ROUTE_1_WAYPOINTS_CP_TO_MOS, ROUTE_1_WAYPOINTS_MOS_TO_CP,
+    ROUTE_2_WAYPOINTS_CP_TO_MOS, ROUTE_2_WAYPOINTS_MOS_TO_CP,
+    ROUTE_1_SEGMENTS, ROUTE_2_SEGMENTS,
+)
 from modules.traffic_calculator import (
     calculate_best_emotion_route,
     get_traffic_data_for_routes,
@@ -130,7 +135,7 @@ async def get_traffic_data(request: EmotionRouteRequest):
     if request.origin_key not in ORIGINS:
         raise HTTPException(
             status_code=400,
-            detail=f"无效起点: {request.origin_key}，可选: cyberport, ma_on_shan",
+            detail=f"无效起点: {request.origin_key}，可选: cyberport（慈正村）, ma_on_shan（中央广场）",
         )
 
     departure_time = _parse_departure_time(request.departure_time)
@@ -154,7 +159,7 @@ async def calculate_emotion_route(request: EmotionRouteRequest):
     if request.origin_key not in ORIGINS:
         raise HTTPException(
             status_code=400,
-            detail=f"无效起点: {request.origin_key}，可选: cyberport, ma_on_shan",
+            detail=f"无效起点: {request.origin_key}，可选: cyberport（慈正村）, ma_on_shan（中央广场）",
         )
 
     departure_time = _parse_departure_time(request.departure_time)
@@ -181,16 +186,35 @@ async def calculate_emotion_route(request: EmotionRouteRequest):
 
 @api.get("/route-data/{route_id}")
 async def get_route_data(route_id: int):
-    """获取情感路线的固定经纬度及分段数据。"""
+    """获取情感路线的固定经纬度及分段数据（动态从 config 生成，随 ROUTE_VERSION 切换）。"""
     if route_id not in (1, 2):
         raise HTTPException(status_code=404, detail="路线 ID 不存在，可选 1 或 2")
 
-    file_path = os.path.join(os.path.dirname(__file__), "routes", f"emotion_route_{route_id}.json")
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="路线数据文件不存在")
+    if route_id == 1:
+        wp_fwd = ROUTE_1_WAYPOINTS_CP_TO_MOS
+        wp_rev = ROUTE_1_WAYPOINTS_MOS_TO_CP
+        segments = ROUTE_1_SEGMENTS
+        color = "#10B981"
+    else:
+        wp_fwd = ROUTE_2_WAYPOINTS_CP_TO_MOS
+        wp_rev = ROUTE_2_WAYPOINTS_MOS_TO_CP
+        segments = ROUTE_2_SEGMENTS
+        color = "#F59E0B"
 
-    with open(file_path, encoding="utf-8") as f:
-        return json.load(f)
+    origin_info = ORIGINS.get("cyberport", {})
+    dest_info   = ORIGINS.get("ma_on_shan", {})
+
+    return {
+        "id":    route_id,
+        "name":  f"情感路线{route_id}",
+        "color": color,
+        "route_version": ROUTE_VERSION,
+        "waypoints_cyberport_to_mos": wp_fwd,
+        "waypoints_mos_to_cyberport": wp_rev,
+        "segments": segments,
+        "origin_name": origin_info.get("name", ""),
+        "dest_name":   dest_info.get("name", ""),
+    }
 
 
 @api.get("/origins")
@@ -201,15 +225,14 @@ async def get_origins():
 
 @api.get("/config/test-mode")
 async def get_test_mode():
-    """获取当前测试模式配置。"""
-    return {"test_mode": TEST_MODE}
+    """获取当前测试模式配置及路线版本。"""
+    return {"test_mode": TEST_MODE, "route_version": ROUTE_VERSION}
 
 
 # ── 路线选择保存 ──────────────────────────────────────────────────────
 
 _ORIGIN_NAME_MAP = {
-    "cyberport":  "数码港",
-    "ma_on_shan": "马鞍山",
+    key: info["name"] for key, info in ORIGINS.items()
 }
 
 _ROUTE_LABEL_MAP = {

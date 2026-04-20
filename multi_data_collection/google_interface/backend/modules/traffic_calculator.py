@@ -21,7 +21,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime
-from config import TEST_MODE
+from config import TEST_MODE, ROUTE_VERSION, ORIGINS
 from modules.segment_analyzer import fetch_route_traffic
 
 
@@ -103,15 +103,19 @@ def calculate_best_emotion_route(
     score_1 = _compute_route_score(computed_1)
     score_2 = _compute_route_score(computed_2)
 
+    origin_name = ORIGINS.get("cyberport", {}).get("name", "起点")
+    dest_name   = ORIGINS.get("ma_on_shan", {}).get("name", "终点")
+    route_prefix = f"{origin_name} ↔ {dest_name}"
+
     if score_1 <= score_2:
         recommended = 1
         reason = (
-            f"路线1（北线）综合得分 {score_1:.4f} ≤ 路线2（南线）{score_2:.4f}，推荐北线"
+            f"【{route_prefix}】路线1 综合得分 {score_1:.4f} ≤ 路线2 {score_2:.4f}，推荐路线1"
         )
     else:
         recommended = 2
         reason = (
-            f"路线2（南线）综合得分 {score_2:.4f} < 路线1（北线）{score_1:.4f}，推荐南线"
+            f"【{route_prefix}】路线2 综合得分 {score_2:.4f} < 路线1 {score_1:.4f}，推荐路线2"
         )
 
     return {

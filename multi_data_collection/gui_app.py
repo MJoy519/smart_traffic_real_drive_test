@@ -1783,12 +1783,16 @@ class App(tk.Tk):
             f"--frontend-dist={frontend_dist}",
         ]
 
+        _backend_env = os.environ.copy()
+        _backend_env["ROUTE_VERSION"] = getattr(config, "ROUTE_VERSION", "new")
+
         try:
             self._route_backend = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 creationflags=_no_window,
+                env=_backend_env,
             )
             self._append_log(
                 f"[GUI] 路线导航服务已启动（受试者: {config.PARTICIPANT_ID}）\n"

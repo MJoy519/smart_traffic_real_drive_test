@@ -6,6 +6,38 @@ import {
 import clsx from 'clsx'
 import RouteCard from './RouteCard'
 
+const _ORIGIN_CARDS_NEW = [
+  {
+    key:      'cyberport',
+    label:    '慈正村三号停车场',
+    sublabel: '慈正村三号停车场, 香港',
+    color:    { border: 'border-indigo-500', bg: 'bg-indigo-50', icon: 'bg-indigo-500', check: 'text-indigo-500' },
+  },
+  {
+    key:      'ma_on_shan',
+    label:    '中央广场停车场',
+    sublabel: '中央广场停车场, 香港',
+    color:    { border: 'border-rose-500', bg: 'bg-rose-50', icon: 'bg-rose-500', check: 'text-rose-500' },
+  },
+]
+
+const _ORIGIN_CARDS_OLD = [
+  {
+    key:      'cyberport',
+    label:    '数码港',
+    sublabel: 'HK Electric Charging Station, 100 Information Cres',
+    color:    { border: 'border-indigo-500', bg: 'bg-indigo-50', icon: 'bg-indigo-500', check: 'text-indigo-500' },
+  },
+  {
+    key:      'ma_on_shan',
+    label:    '马鞍山',
+    sublabel: '马鞍山游泳池, 鞍駿街33號',
+    color:    { border: 'border-rose-500', bg: 'bg-rose-50', icon: 'bg-rose-500', check: 'text-rose-500' },
+  },
+]
+
+function getOriginCards(ver) { return ver === 'new' ? _ORIGIN_CARDS_NEW : _ORIGIN_CARDS_OLD }
+
 const STEPS = ['select_origin', 'view_routes', 'select_time']
 const STEP_LABELS = { select_origin: '选择起点', view_routes: '选择路线', select_time: '确认出行' }
 
@@ -76,6 +108,7 @@ export default function ControlPanel({
   calculating,
   testMode,
   testModeRoute,
+  routeVersion,
 
   // 回调
   onSelectOrigin,
@@ -164,22 +197,17 @@ export default function ControlPanel({
           {step === 'select_origin' && (
             <div className="space-y-3">
               <p className="text-slate-600 text-sm">请选择本次行程的起点：</p>
-              <OriginCard
-                label="数码港"
-                sublabel="HK Electric Charging Station, 100 Information Cres"
-                icon={MapPin}
-                color={{ border: 'border-indigo-500', bg: 'bg-indigo-50', icon: 'bg-indigo-500', check: 'text-indigo-500' }}
-                selected={origin === 'cyberport'}
-                onClick={() => onSelectOrigin('cyberport')}
-              />
-              <OriginCard
-                label="马鞍山"
-                sublabel="马鞍山游泳池, 鞍駿街33號"
-                icon={MapPin}
-                color={{ border: 'border-rose-500', bg: 'bg-rose-50', icon: 'bg-rose-500', check: 'text-rose-500' }}
-                selected={origin === 'ma_on_shan'}
-                onClick={() => onSelectOrigin('ma_on_shan')}
-              />
+              {getOriginCards(routeVersion || 'new').map((card) => (
+                <OriginCard
+                  key={card.key}
+                  label={card.label}
+                  sublabel={card.sublabel}
+                  icon={MapPin}
+                  color={card.color}
+                  selected={origin === card.key}
+                  onClick={() => onSelectOrigin(card.key)}
+                />
+              ))}
             </div>
           )}
 

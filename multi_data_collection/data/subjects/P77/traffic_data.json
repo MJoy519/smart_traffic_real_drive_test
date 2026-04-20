@@ -1,0 +1,844 @@
+[
+  {
+    "call_mode": "get_traffic_data",
+    "saved_at": "2026-04-15T02:40:39.374574",
+    "timestamp": "2026-04-15T02:40:37.513676",
+    "origin_key": "cyberport",
+    "test_mode": true,
+    "route_1": {
+      "raw_api_response": {
+        "summary": "Victoria Rd",
+        "warnings": [],
+        "waypoint_order": [
+          0,
+          1,
+          2
+        ],
+        "legs": [
+          {
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "distance": {
+              "text": "5.0 km",
+              "value": 5021
+            },
+            "duration": {
+              "text": "11 mins",
+              "value": 675
+            },
+            "duration_in_traffic": {
+              "text": "11 mins",
+              "value": 675
+            }
+          },
+          {
+            "start_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "end_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "start_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "end_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "distance": {
+              "text": "11.1 km",
+              "value": 11104
+            },
+            "duration": {
+              "text": "12 mins",
+              "value": 737
+            },
+            "duration_in_traffic": {
+              "text": "12 mins",
+              "value": 737
+            }
+          },
+          {
+            "start_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance": {
+              "text": "7.1 km",
+              "value": 7064
+            },
+            "duration": {
+              "text": "7 mins",
+              "value": 431
+            },
+            "duration_in_traffic": {
+              "text": "7 mins",
+              "value": 431
+            }
+          },
+          {
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance": {
+              "text": "6.5 km",
+              "value": 6483
+            },
+            "duration": {
+              "text": "8 mins",
+              "value": 469
+            },
+            "duration_in_traffic": {
+              "text": "8 mins",
+              "value": 469
+            }
+          }
+        ]
+      },
+      "computed": {
+        "departure_time_iso": "2026-04-15T02:40:37.513676",
+        "segments": [
+          {
+            "leg_index": 0,
+            "segment_name": "数码港 → 途径点1（西环）",
+            "start_label": "数码港",
+            "end_label": "途径点1（西环）",
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "distance_m": 5021,
+            "free_flow_duration_s": 675,
+            "actual_duration_s": 675,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T02:51:52.513676"
+          },
+          {
+            "leg_index": 1,
+            "segment_name": "途径点1（西环） → 途径点2（九龙湾）",
+            "start_label": "途径点1（西环）",
+            "end_label": "途径点2（九龙湾）",
+            "start_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "end_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "start_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "end_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "distance_m": 11104,
+            "free_flow_duration_s": 737,
+            "actual_duration_s": 737,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:04:09.513676"
+          },
+          {
+            "leg_index": 2,
+            "segment_name": "途径点2（九龙湾） → 途径点3（沙田）",
+            "start_label": "途径点2（九龙湾）",
+            "end_label": "途径点3（沙田）",
+            "start_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance_m": 7064,
+            "free_flow_duration_s": 431,
+            "actual_duration_s": 431,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:11:20.513676"
+          },
+          {
+            "leg_index": 3,
+            "segment_name": "途径点3（沙田） → 马鞍山",
+            "start_label": "途径点3（沙田）",
+            "end_label": "马鞍山",
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance_m": 6483,
+            "free_flow_duration_s": 469,
+            "actual_duration_s": 469,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:19:09.513676"
+          }
+        ],
+        "total_distance_m": 29672,
+        "total_free_flow_duration_s": 2312,
+        "total_actual_duration_s": 2312,
+        "total_congestion_delay_s": 0,
+        "total_bti": 0.0
+      }
+    },
+    "route_2": {
+      "raw_api_response": {
+        "summary": "Route 1",
+        "warnings": [],
+        "waypoint_order": [
+          0,
+          1,
+          2
+        ],
+        "legs": [
+          {
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "distance": {
+              "text": "10.6 km",
+              "value": 10553
+            },
+            "duration": {
+              "text": "17 mins",
+              "value": 1043
+            },
+            "duration_in_traffic": {
+              "text": "17 mins",
+              "value": 1043
+            }
+          },
+          {
+            "start_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "end_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "start_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "end_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "distance": {
+              "text": "4.9 km",
+              "value": 4936
+            },
+            "duration": {
+              "text": "6 mins",
+              "value": 340
+            },
+            "duration_in_traffic": {
+              "text": "6 mins",
+              "value": 340
+            }
+          },
+          {
+            "start_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance": {
+              "text": "9.1 km",
+              "value": 9148
+            },
+            "duration": {
+              "text": "9 mins",
+              "value": 568
+            },
+            "duration_in_traffic": {
+              "text": "9 mins",
+              "value": 568
+            }
+          },
+          {
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance": {
+              "text": "6.5 km",
+              "value": 6483
+            },
+            "duration": {
+              "text": "8 mins",
+              "value": 469
+            },
+            "duration_in_traffic": {
+              "text": "8 mins",
+              "value": 469
+            }
+          }
+        ]
+      },
+      "computed": {
+        "departure_time_iso": "2026-04-15T02:40:37.513676",
+        "segments": [
+          {
+            "leg_index": 0,
+            "segment_name": "数码港 → 途径点1（香港仔）",
+            "start_label": "数码港",
+            "end_label": "途径点1（香港仔）",
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "distance_m": 10553,
+            "free_flow_duration_s": 1043,
+            "actual_duration_s": 1043,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T02:58:00.513676"
+          },
+          {
+            "leg_index": 1,
+            "segment_name": "途径点1（香港仔） → 途径点2（东区）",
+            "start_label": "途径点1（香港仔）",
+            "end_label": "途径点2（东区）",
+            "start_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "end_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "start_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "end_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "distance_m": 4936,
+            "free_flow_duration_s": 340,
+            "actual_duration_s": 340,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:03:40.513676"
+          },
+          {
+            "leg_index": 2,
+            "segment_name": "途径点2（东区） → 途径点3（沙田）",
+            "start_label": "途径点2（东区）",
+            "end_label": "途径点3（沙田）",
+            "start_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance_m": 9148,
+            "free_flow_duration_s": 568,
+            "actual_duration_s": 568,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:13:08.513676"
+          },
+          {
+            "leg_index": 3,
+            "segment_name": "途径点3（沙田） → 马鞍山",
+            "start_label": "途径点3（沙田）",
+            "end_label": "马鞍山",
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance_m": 6483,
+            "free_flow_duration_s": 469,
+            "actual_duration_s": 469,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:20:57.513676"
+          }
+        ],
+        "total_distance_m": 31120,
+        "total_free_flow_duration_s": 2420,
+        "total_actual_duration_s": 2420,
+        "total_congestion_delay_s": 0,
+        "total_bti": 0.0
+      }
+    }
+  },
+  {
+    "call_mode": "get_traffic_data",
+    "saved_at": "2026-04-15T02:43:12.105256",
+    "timestamp": "2026-04-15T02:43:10.312609",
+    "origin_key": "cyberport",
+    "test_mode": true,
+    "route_1": {
+      "raw_api_response": {
+        "summary": "Victoria Rd",
+        "warnings": [],
+        "waypoint_order": [
+          0,
+          1,
+          2
+        ],
+        "legs": [
+          {
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "distance": {
+              "text": "5.0 km",
+              "value": 5021
+            },
+            "duration": {
+              "text": "11 mins",
+              "value": 675
+            },
+            "duration_in_traffic": {
+              "text": "11 mins",
+              "value": 675
+            }
+          },
+          {
+            "start_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "end_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "start_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "end_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "distance": {
+              "text": "11.1 km",
+              "value": 11104
+            },
+            "duration": {
+              "text": "12 mins",
+              "value": 737
+            },
+            "duration_in_traffic": {
+              "text": "12 mins",
+              "value": 737
+            }
+          },
+          {
+            "start_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance": {
+              "text": "7.1 km",
+              "value": 7064
+            },
+            "duration": {
+              "text": "7 mins",
+              "value": 431
+            },
+            "duration_in_traffic": {
+              "text": "7 mins",
+              "value": 431
+            }
+          },
+          {
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance": {
+              "text": "6.5 km",
+              "value": 6483
+            },
+            "duration": {
+              "text": "8 mins",
+              "value": 469
+            },
+            "duration_in_traffic": {
+              "text": "8 mins",
+              "value": 469
+            }
+          }
+        ]
+      },
+      "computed": {
+        "departure_time_iso": "2026-04-15T02:43:10.312609",
+        "segments": [
+          {
+            "leg_index": 0,
+            "segment_name": "数码港 → 途径点1（西环）",
+            "start_label": "数码港",
+            "end_label": "途径点1（西环）",
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "distance_m": 5021,
+            "free_flow_duration_s": 675,
+            "actual_duration_s": 675,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T02:54:25.312609"
+          },
+          {
+            "leg_index": 1,
+            "segment_name": "途径点1（西环） → 途径点2（九龙湾）",
+            "start_label": "途径点1（西环）",
+            "end_label": "途径点2（九龙湾）",
+            "start_address": "7-8 New Praya, Kennedy Town, Hong Kong",
+            "end_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "start_location": {
+              "lat": 22.2840001,
+              "lng": 114.127797
+            },
+            "end_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "distance_m": 11104,
+            "free_flow_duration_s": 737,
+            "actual_duration_s": 737,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:06:42.312609"
+          },
+          {
+            "leg_index": 2,
+            "segment_name": "途径点2（九龙湾） → 途径点3（沙田）",
+            "start_label": "途径点2（九龙湾）",
+            "end_label": "途径点3（沙田）",
+            "start_address": "Hong Kong, Kowloon Bay, 九龍九龍灣啓祥道22號開達大廈",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3256312,
+              "lng": 114.209476
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance_m": 7064,
+            "free_flow_duration_s": 431,
+            "actual_duration_s": 431,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:13:53.312609"
+          },
+          {
+            "leg_index": 3,
+            "segment_name": "途径点3（沙田） → 马鞍山",
+            "start_label": "途径点3（沙田）",
+            "end_label": "马鞍山",
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance_m": 6483,
+            "free_flow_duration_s": 469,
+            "actual_duration_s": 469,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:21:42.312609"
+          }
+        ],
+        "total_distance_m": 29672,
+        "total_free_flow_duration_s": 2312,
+        "total_actual_duration_s": 2312,
+        "total_congestion_delay_s": 0,
+        "total_bti": 0.0
+      }
+    },
+    "route_2": {
+      "raw_api_response": {
+        "summary": "Route 1",
+        "warnings": [],
+        "waypoint_order": [
+          0,
+          1,
+          2
+        ],
+        "legs": [
+          {
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "distance": {
+              "text": "10.6 km",
+              "value": 10553
+            },
+            "duration": {
+              "text": "17 mins",
+              "value": 1043
+            },
+            "duration_in_traffic": {
+              "text": "17 mins",
+              "value": 1043
+            }
+          },
+          {
+            "start_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "end_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "start_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "end_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "distance": {
+              "text": "4.9 km",
+              "value": 4936
+            },
+            "duration": {
+              "text": "6 mins",
+              "value": 340
+            },
+            "duration_in_traffic": {
+              "text": "6 mins",
+              "value": 340
+            }
+          },
+          {
+            "start_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance": {
+              "text": "9.1 km",
+              "value": 9148
+            },
+            "duration": {
+              "text": "9 mins",
+              "value": 568
+            },
+            "duration_in_traffic": {
+              "text": "9 mins",
+              "value": 568
+            }
+          },
+          {
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance": {
+              "text": "6.5 km",
+              "value": 6483
+            },
+            "duration": {
+              "text": "8 mins",
+              "value": 469
+            },
+            "duration_in_traffic": {
+              "text": "8 mins",
+              "value": 469
+            }
+          }
+        ]
+      },
+      "computed": {
+        "departure_time_iso": "2026-04-15T02:43:10.312609",
+        "segments": [
+          {
+            "leg_index": 0,
+            "segment_name": "数码港 → 途径点1（香港仔）",
+            "start_label": "数码港",
+            "end_label": "途径点1（香港仔）",
+            "start_address": "100 Information Cres, Central, Hong Kong",
+            "end_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "start_location": {
+              "lat": 22.2623701,
+              "lng": 114.1309033
+            },
+            "end_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "distance_m": 10553,
+            "free_flow_duration_s": 1043,
+            "actual_duration_s": 1043,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:00:33.312609"
+          },
+          {
+            "leg_index": 1,
+            "segment_name": "途径点1（香港仔） → 途径点2（东区）",
+            "start_label": "途径点1（香港仔）",
+            "end_label": "途径点2（东区）",
+            "start_address": "429 Canal Rd W, Wan Chai, Hong Kong",
+            "end_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "start_location": {
+              "lat": 22.2799931,
+              "lng": 114.1809572
+            },
+            "end_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "distance_m": 4936,
+            "free_flow_duration_s": 340,
+            "actual_duration_s": 340,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:06:13.312609"
+          },
+          {
+            "leg_index": 2,
+            "segment_name": "途径点2（东区） → 途径点3（沙田）",
+            "start_label": "途径点2（东区）",
+            "end_label": "途径点3（沙田）",
+            "start_address": "5-21 Kowloon City Road, 5號 Kowloon City Rd, To Kwa Wan, Hong Kong",
+            "end_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "start_location": {
+              "lat": 22.3174156,
+              "lng": 114.1884887
+            },
+            "end_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "distance_m": 9148,
+            "free_flow_duration_s": 568,
+            "actual_duration_s": 568,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:15:41.312609"
+          },
+          {
+            "leg_index": 3,
+            "segment_name": "途径点3（沙田） → 马鞍山",
+            "start_label": "途径点3（沙田）",
+            "end_label": "马鞍山",
+            "start_address": "Hong Kong, Siu Lek Yuen, 恒生管理學院B座康樂大樓",
+            "end_address": "608 Sai Sha Rd, Ma On Shan, Hong Kong",
+            "start_location": {
+              "lat": 22.3794912,
+              "lng": 114.2102682
+            },
+            "end_location": {
+              "lat": 22.4261321,
+              "lng": 114.2321723
+            },
+            "distance_m": 6483,
+            "free_flow_duration_s": 469,
+            "actual_duration_s": 469,
+            "congestion_delay_s": 0,
+            "bti": 0.0,
+            "estimated_arrival_iso": "2026-04-15T03:23:30.312609"
+          }
+        ],
+        "total_distance_m": 31120,
+        "total_free_flow_duration_s": 2420,
+        "total_actual_duration_s": 2420,
+        "total_congestion_delay_s": 0,
+        "total_bti": 0.0
+      }
+    }
+  }
+]

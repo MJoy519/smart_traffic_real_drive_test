@@ -8,16 +8,49 @@ import { useGeolocation } from './hooks/useGeolocation'
 
 const MAPS_LIBRARIES = ['places', 'geometry']
 
-// 起终点坐标（与 config.py ORIGINS 保持一致）
-const LOCATION_MAP = {
-  cyberport:  { lat: 22.262372, lng: 114.130906 },
-  ma_on_shan: { lat: 22.426133, lng: 114.232172 },
+// ── 起终点坐标（新路线）──────────────────────────────────────
+const _LOCATION_MAP_NEW = {
+  cyberport:  { lat: 22.350840, lng: 114.198602 },  // 慈正村三号停车场
+  ma_on_shan: { lat: 22.280687, lng: 114.154501 },  // 中央广场停车场
+}
+// ── 起终点坐标（旧路线）──────────────────────────────────────
+const _LOCATION_MAP_OLD = {
+  cyberport:  { lat: 22.262372, lng: 114.130906 },  // 数码港
+  ma_on_shan: { lat: 22.426133, lng: 114.232172 },  // 马鞍山
 }
 
-// 每条路线对应的途经点（中间点设 stopover: false，首尾由 origin/destination 提供）
-const ROUTE_WAYPOINTS = {
+// ── 途经点：新路线（3个途径点/方向）────────────────────────
+const _ROUTE_WAYPOINTS_NEW = {
   emotion1: {
-    // 数码港 → 马鞍山：R1P02–R1P20（19个中间点）
+    cyberport: [
+      { location: { lat: 22.342975, lng: 114.184378 }, stopover: false }, // 途径点1
+      { location: { lat: 22.336127, lng: 114.134340 }, stopover: false }, // 途径点2
+      { location: { lat: 22.289671, lng: 114.142490 }, stopover: false }, // 途径点3
+    ],
+    ma_on_shan: [
+      { location: { lat: 22.288595, lng: 114.146323 }, stopover: false }, // 途径点1
+      { location: { lat: 22.331573, lng: 114.136412 }, stopover: false }, // 途径点2
+      { location: { lat: 22.342891, lng: 114.185151 }, stopover: false }, // 途径点3
+    ],
+  },
+  emotion2: {
+    cyberport: [
+      { location: { lat: 22.336935, lng: 114.195173 }, stopover: false }, // 途径点1
+      { location: { lat: 22.308405, lng: 114.232008 }, stopover: false }, // 途径点2
+      { location: { lat: 22.291345, lng: 114.193027 }, stopover: false }, // 途径点3
+    ],
+    ma_on_shan: [
+      { location: { lat: 22.281564, lng: 114.179711 }, stopover: false }, // 途径点1
+      { location: { lat: 22.306780, lng: 114.233123 }, stopover: false }, // 途径点2
+      { location: { lat: 22.340598, lng: 114.200265 }, stopover: false }, // 途径点3
+    ],
+  },
+}
+
+// ── 途经点：旧路线（数码港↔马鞍山，北线21节点/南线24节点）──
+const _ROUTE_WAYPOINTS_OLD = {
+  emotion1: {
+    // 数码港 → 马鞍山（北线/西区隧道，R1P02–R1P20，19个中间点）
     cyberport: [
       { location: { lat: 22.261628, lng: 114.129182 }, stopover: false }, // R1P02 资讯道环岛
       { location: { lat: 22.268944, lng: 114.126322 }, stopover: false }, // R1P03 域多利道
@@ -39,8 +72,7 @@ const ROUTE_WAYPOINTS = {
       { location: { lat: 22.421894, lng: 114.227245 }, stopover: false }, // R1P19 马鞍山路4
       { location: { lat: 22.424497, lng: 114.229463 }, stopover: false }, // R1P20 马鞍山路5
     ],
-    // 马鞍山 → 数码港：R1P20–R1P02（反向）
-    // 马鞍山 → 数码港：R1M02–R1M27（25个中间点，R1M03已删除以满足API上限）
+    // 马鞍山 → 数码港（R1M02–R1M27，25个中间点，R1M11已删除以满足API上限）
     ma_on_shan: [
       { location: { lat: 22.425347, lng: 114.229303 }, stopover: false }, // R1M02
       { location: { lat: 22.415367, lng: 114.225305 }, stopover: false }, // R1M04
@@ -69,7 +101,7 @@ const ROUTE_WAYPOINTS = {
     ],
   },
   emotion2: {
-    // 数码港 → 马鞍山：R2P02–R2P25（24个中间点）
+    // 数码港 → 马鞍山（南线/香港仔，R2P02–R2P25，24个中间点）
     cyberport: [
       { location: { lat: 22.261552, lng: 114.129331 }, stopover: false }, // R2P02
       { location: { lat: 22.256601, lng: 114.134217 }, stopover: false }, // R2P03
@@ -77,7 +109,6 @@ const ROUTE_WAYPOINTS = {
       { location: { lat: 22.252453, lng: 114.140569 }, stopover: false }, // R2P05
       { location: { lat: 22.249329, lng: 114.145521 }, stopover: false }, // R2P06
       { location: { lat: 22.248724, lng: 114.148298 }, stopover: false }, // R2P07
-
       { location: { lat: 22.281037, lng: 114.180360 }, stopover: false }, // R2P09
       { location: { lat: 22.305877, lng: 114.181442 }, stopover: false }, // R2P10
       { location: { lat: 22.319594, lng: 114.189718 }, stopover: false }, // R2P11
@@ -96,7 +127,7 @@ const ROUTE_WAYPOINTS = {
       { location: { lat: 22.424599, lng: 114.229425 }, stopover: false }, // R2P24
       { location: { lat: 22.425288, lng: 114.229006 }, stopover: false }, // R2P25
     ],
-    // 马鞍山 → 数码港：R2M02–R2M24（23个中间点）
+    // 马鞍山 → 数码港（R2M02–R2M24，23个中间点）
     ma_on_shan: [
       { location: { lat: 22.425347, lng: 114.229303 }, stopover: false }, // R2M02
       { location: { lat: 22.423862, lng: 114.229164 }, stopover: false }, // R2M03
@@ -110,7 +141,6 @@ const ROUTE_WAYPOINTS = {
       { location: { lat: 22.380817, lng: 114.208086 }, stopover: false }, // R2M11
       { location: { lat: 22.377942, lng: 114.203327 }, stopover: false }, // R2M12
       { location: { lat: 22.343509, lng: 114.179351 }, stopover: false }, // R2M13
-
       { location: { lat: 22.281975, lng: 114.181411 }, stopover: false }, // R2M15
       { location: { lat: 22.250005, lng: 114.176442 }, stopover: false }, // R2M16
       { location: { lat: 22.248876, lng: 114.147278 }, stopover: false }, // R2M17
@@ -124,6 +154,10 @@ const ROUTE_WAYPOINTS = {
     ],
   },
 }
+
+// 工具函数：根据版本字符串返回当前激活的坐标/途径点
+function getLocationMap(ver)    { return ver === 'new' ? _LOCATION_MAP_NEW    : _LOCATION_MAP_OLD }
+function getRouteWaypoints(ver) { return ver === 'new' ? _ROUTE_WAYPOINTS_NEW : _ROUTE_WAYPOINTS_OLD }
 
 export default function App() {
   const { isLoaded, loadError } = useJsApiLoader({
@@ -150,22 +184,26 @@ export default function App() {
   const [emotionResult,    setEmotionResult]    = useState(null)
   const [calculating,      setCalculating]      = useState(false)
 
-  // ── 测试模式 ────────────────────────────────────────────────────
+  // ── 测试模式 & 路线版本 ─────────────────────────────────────────
   const [testMode,      setTestMode]      = useState(false)
   const [testModeRoute, setTestModeRoute] = useState(null)
+  const [routeVersion,  setRouteVersion]  = useState('new')  // 从 API 动态获取
 
-  // ── 定位 ────────────────────────────────────────────────────────
-  const { location, loading: locLoading, error: locError, locate, isAtOrigin } = useGeolocation(500)
+  // ── 定位（传入当前版本的坐标表，无需 rebuild 即可切换）─────────
+  const { location, loading: locLoading, error: locError, locate, isAtOrigin } = useGeolocation(
+    500, getLocationMap(routeVersion)
+  )
   const [atOrigin, setAtOrigin] = useState(false)
 
   const mapRef = useRef(null)
 
-  // ── 初始化：获取测试模式配置 ────────────────────────────────────
+  // ── 初始化：从 API 获取测试模式 & 路线版本 ──────────────────────
   useEffect(() => {
     getTestModeConfig()
       .then((cfg) => {
         setTestMode(cfg.test_mode)
         setTestModeRoute(cfg.forced_route)
+        if (cfg.route_version) setRouteVersion(cfg.route_version)
       })
       .catch(() => {})
   }, [])
@@ -181,8 +219,10 @@ export default function App() {
   const fetchAllRoutes = useCallback((originKey, departureTime = null) => {
     if (!window.google) return
 
-    const origin  = LOCATION_MAP[originKey]
-    const dest    = originKey === 'cyberport' ? LOCATION_MAP.ma_on_shan : LOCATION_MAP.cyberport
+    const locationMap     = getLocationMap(routeVersion)
+    const routeWaypoints  = getRouteWaypoints(routeVersion)
+    const origin  = locationMap[originKey]
+    const dest    = originKey === 'cyberport' ? locationMap.ma_on_shan : locationMap.cyberport
     const ds      = new window.google.maps.DirectionsService()
     const depTime = departureTime ? new Date(departureTime) : new Date()
 
@@ -206,7 +246,7 @@ export default function App() {
       origin,
       destination:    dest,
       travelMode:     window.google.maps.TravelMode.DRIVING,
-      waypoints:      ROUTE_WAYPOINTS.emotion1[originKey],
+      waypoints:      routeWaypoints.emotion1[originKey],
       drivingOptions: drivingOpts,
     }, (result, status) => {
       if (status === 'OK') {
@@ -221,7 +261,7 @@ export default function App() {
       origin,
       destination:    dest,
       travelMode:     window.google.maps.TravelMode.DRIVING,
-      waypoints:      ROUTE_WAYPOINTS.emotion2[originKey],
+      waypoints:      routeWaypoints.emotion2[originKey],
       drivingOptions: drivingOpts,
     }, (result, status) => {
       if (status === 'OK') {
@@ -230,7 +270,7 @@ export default function App() {
         console.error('[情感路线2] DirectionsService 返回错误:', status)
       }
     })
-  }, [])
+  }, [routeVersion])
 
   // ── 回调：选择起点 ──────────────────────────────────────────────
   const handleSelectOrigin = useCallback((key) => {
@@ -431,6 +471,7 @@ export default function App() {
           calculating={calculating}
           testMode={testMode}
           testModeRoute={testModeRoute}
+          routeVersion={routeVersion}
           onSelectOrigin={handleSelectOrigin}
           onSelectMode={handleSelectMode}
           onSelectRoute={handleSelectRoute}

@@ -1,10 +1,5 @@
 import { useState, useCallback } from 'react'
 
-const ORIGINS = {
-  cyberport:  { lat: 22.262357, lng: 114.130918 },  // R1P01
-  ma_on_shan: { lat: 22.426784, lng: 114.228231 },  // R1P21
-}
-
 /** 两点间距离（米），Haversine 公式 */
 function haversineDistance(a, b) {
   const R = 6371000
@@ -22,8 +17,9 @@ function haversineDistance(a, b) {
 /**
  * 定位钩子：获取当前位置，判断是否到达起点
  * @param {number} radiusMeters - 判定半径（默认 500m）
+ * @param {Object} originsMap   - 起点坐标表，格式 { cyberport: {lat,lng}, ma_on_shan: {lat,lng} }
  */
-export function useGeolocation(radiusMeters = 500) {
+export function useGeolocation(radiusMeters = 500, originsMap = {}) {
   const [location, setLocation]   = useState(null)  // { lat, lng, accuracy }
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState(null)
@@ -59,11 +55,11 @@ export function useGeolocation(radiusMeters = 500) {
   const isAtOrigin = useCallback(
     (originKey) => {
       if (!location) return false
-      const origin = ORIGINS[originKey]
+      const origin = originsMap[originKey]
       if (!origin) return false
       return haversineDistance(location, origin) <= radiusMeters
     },
-    [location, radiusMeters]
+    [location, radiusMeters, originsMap]
   )
 
   return { location, loading, error, locate, isAtOrigin }
