@@ -16,13 +16,22 @@
   TEST_MODE=True  → "获取交通数据"按钮，调用真实 API，不推荐路线
   TEST_MODE=False → "计算最优情感路线"按钮，调用 API 并给出推荐
 """
-import sys
+import importlib.util
 import os
+import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 from datetime import datetime
 from config import TEST_MODE, ROUTE_VERSION, ORIGINS
 from modules.segment_analyzer import fetch_route_traffic
+
+# 读取根配置中的 ROUTE_CONTROL（避免与同名 backend/config.py 冲突）
+_root_cfg_path = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "config.py")
+)
+_root_cfg_spec = importlib.util.spec_from_file_location("root_config", _root_cfg_path)
+_root_cfg_mod  = importlib.util.module_from_spec(_root_cfg_spec)
+_root_cfg_spec.loader.exec_module(_root_cfg_mod)
+ROUTE_CONTROL: int = getattr(_root_cfg_mod, "ROUTE_CONTROL", 1)
 
 
 def get_traffic_data_for_routes(
@@ -100,41 +109,40 @@ def calculate_best_emotion_route(
     computed_1 = traffic["route_1"]["computed"]
     computed_2 = traffic["route_2"]["computed"]
 
-    score_1 = _compute_route_score(computed_1)
-    score_2 = _compute_route_score(computed_2)
+    recommended = _control_route_score()
 
-    origin_name = ORIGINS.get("cyberport", {}).get("name", "起点")
-    dest_name   = ORIGINS.get("ma_on_shan", {}).get("name", "终点")
+    origin_name  = ORIGINS.get("cyberport", {}).get("name", "起点")
+    dest_name    = ORIGINS.get("ma_on_shan", {}).get("name", "终点")
     route_prefix = f"{origin_name} ↔ {dest_name}"
-
-    if score_1 <= score_2:
-        recommended = 1
-        reason = (
-            f"【{route_prefix}】路线1 综合得分 {score_1:.4f} ≤ 路线2 {score_2:.4f}，推荐路线1"
-        )
-    else:
-        recommended = 2
-        reason = (
-            f"【{route_prefix}】路线2 综合得分 {score_2:.4f} < 路线1 {score_1:.4f}，推荐路线2"
-        )
+    reason = f"【{route_prefix}】由 ROUTE_CONTROL 固定指定，推荐路线{recommended}"
 
     return {
         "recommended_route": recommended,
         "reason":            reason,
         "route_1_analysis":  {
             "total_bti": computed_1["total_bti"],
-            "score":     score_1,
+            "score":     None,
             "segments":  computed_1["segments"],
         },
         "route_2_analysis":  {
             "total_bti": computed_2["total_bti"],
-            "score":     score_2,
+            "score":     None,
             "segments":  computed_2["segments"],
         },
         "traffic_data":  traffic,
         "test_mode":     False,
         "departure_time": departure_time.isoformat(),
     }
+
+
+def _control_route_score() -> int:
+    """
+    正式模式下的路线选择函数。
+    返回值固定由根配置 multi_data_collection/config.py 的 ROUTE_CONTROL 决定：
+      ROUTE_CONTROL = 1 → 推荐路线1
+      ROUTE_CONTROL = 2 → 推荐路线2
+    """
+    return 1 if ROUTE_CONTROL != 2 else 2
 
 
 def _compute_route_score(computed: dict) -> float:

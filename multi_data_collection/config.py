@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+# ————control
+ROUTE_CONTROL = 2
+
 # ─── 数据输出根目录
 DATA_ROOT = "data"
 
@@ -36,7 +39,7 @@ CAMERA_ONLY_MODE = True
 # ─── 路线版本切换（唯一配置入口）
 # "new" → 慈正村三号停车场 ↔ 中央广场停车场
 # "old" → 数码港 ↔ 马鞍山
-ROUTE_VERSION = "old"
+ROUTE_VERSION = "new"
 
 # ─── 采集定位（collect.py）
 # True：GPS/Azure 使用下方固定经纬度；False：使用串口 GPS 实时定位
@@ -62,5 +65,8 @@ TRAFFIC_INCIDENT_DETAIL   = "https://atlas.microsoft.com/traffic/incident/detail
 
 # ─── API 请求超时（秒）
 REQUEST_TIMEOUT = 15
+
+
+
 
 

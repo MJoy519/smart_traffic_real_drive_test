@@ -466,7 +466,7 @@ TRAFFIC_WAYPOINTS = _TRAFFIC_WAYPOINTS_NEW if ROUTE_VERSION == "new" else _TRAFF
 #  TEST_MODE=True  → 按钮显示"获取交通数据"，调用真实 API 但不推荐路线
 #  TEST_MODE=False → 按钮显示"计算最优情感路线"，调用 API 并推荐路线
 # ─────────────────────────────────────────────
-TEST_MODE = True           # True = 测试模式，False = 正式模式
+TEST_MODE = False           # True = 测试模式，False = 正式模式
 TEST_MODE_FORCED_ROUTE = 1  # 仅供历史兼容，正式模式不再使用
 
 # ─────────────────────────────────────────────
