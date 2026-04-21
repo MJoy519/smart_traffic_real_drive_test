@@ -18,6 +18,7 @@
 """
 import importlib.util
 import os
+import random
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from datetime import datetime
@@ -138,12 +139,18 @@ def calculate_best_emotion_route(
 def _control_route_score() -> int:
     """
     正式模式下的路线选择函数。
-    返回值固定由根配置 multi_data_collection/config.py 的 ROUTE_CONTROL 决定：
-      ROUTE_CONTROL = 1 → 推荐路线1
-      ROUTE_CONTROL = 2 → 推荐路线2
+    以二分之一概率随机推荐路线1或路线2。
     """
-    return 1 if ROUTE_CONTROL != 2 else 2
+    return random.choice((1, 2))
 
+# def _control_route_score() -> int:
+#     """
+#     正式模式下的路线选择函数。
+#     返回值固定由根配置 multi_data_collection/config.py 的 ROUTE_CONTROL 决定：
+#       ROUTE_CONTROL = 1 → 推荐路线1
+#       ROUTE_CONTROL = 2 → 推荐路线2
+#     """
+#     return 1 if ROUTE_CONTROL != 2 else 2
 
 def _compute_route_score(computed: dict) -> float:
     """
