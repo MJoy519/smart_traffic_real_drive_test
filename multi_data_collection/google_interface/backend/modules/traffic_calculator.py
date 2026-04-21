@@ -115,7 +115,7 @@ def calculate_best_emotion_route(
     origin_name  = ORIGINS.get("cyberport", {}).get("name", "起点")
     dest_name    = ORIGINS.get("ma_on_shan", {}).get("name", "终点")
     route_prefix = f"{origin_name} ↔ {dest_name}"
-    reason = f"【{route_prefix}】由 ROUTE_CONTROL 固定指定，推荐路线{recommended}"
+    reason = f"【{route_prefix}】根据当前交通环境，推荐情感路线{recommended}"
 
     return {
         "recommended_route": recommended,
